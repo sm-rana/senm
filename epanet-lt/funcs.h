@@ -84,6 +84,9 @@ void    inperrmsg(int,int,char *);        /* Input error message        */
 
 /* ---------- INPUT3.C -----------------*/
 int     juncdata(void);                   /* Processes junction data    */
+
+int		coordata();
+
 int     tankdata(void);                   /* Processes tank data        */
 int     pipedata(void);                   /* Processes pipe data        */
 int     pumpdata(void);                   /* Processes pump data        */

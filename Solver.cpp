@@ -5,7 +5,7 @@
 const double Solver::MISSING = -1.0E-10;
 const double Solver::QZERO = 1.e-6;
 
-Solver::ErrorCode Solver::createSolver(Network* net, Solver* outsolver) {
+Solver::ErrorCode Solver::createSolver(Network* net, Solver** outsolver) {
 	// allocate 
 	
 	if (net == NULL) {
@@ -13,7 +13,7 @@ Solver::ErrorCode Solver::createSolver(Network* net, Solver* outsolver) {
 		return(NETWORK_NOT_EXIST);
 	}
 
-	Solver *prec = new Solver();
+	Solver *prec = new Solver(); //solver precursor
 	prec->_net = net;
 
 	prec->N = net->MaxNodes;
@@ -21,17 +21,17 @@ Solver::ErrorCode Solver::createSolver(Network* net, Solver* outsolver) {
 
 	int n = prec->N + 1;
 	int m = prec->M + 1;
-	
+
 	prec->D  = (double *) calloc(n, sizeof(double));
 	prec->H =  (double *) calloc(n, sizeof(double));
 
 	prec->Aii = (double *) calloc(n,sizeof(double));
-   prec->Aij = (double *) calloc(net->Ncoeffs+1,sizeof(double));
-   prec->F   = (double *) calloc(n,sizeof(double));
-   prec->E   = (double *) calloc(n,sizeof(double));
-   prec->P   = (double *) calloc(m,sizeof(double));
-   prec->Y   = (double *) calloc(m,sizeof(double));
-   prec->X   = (double *) calloc(m>n?m:n,sizeof(double));
+	prec->Aij = (double *) calloc(net->Ncoeffs+1,sizeof(double));
+	prec->F   = (double *) calloc(n,sizeof(double));
+	prec->E   = (double *) calloc(n,sizeof(double));
+	prec->P   = (double *) calloc(m,sizeof(double));
+	prec->Y   = (double *) calloc(m,sizeof(double));
+	prec->X   = (double *) calloc(m>n?m:n,sizeof(double));
 
 
 	prec->Q    = (double *) calloc(m, sizeof(double));
@@ -50,7 +50,7 @@ Solver::ErrorCode Solver::createSolver(Network* net, Solver* outsolver) {
    if (net->Formflag == Network::HW) prec->Hexp = 1.852;
    else                prec->Hexp = 2.0;
 
-   outsolver = prec;
+   *outsolver = prec;
 
 }
 

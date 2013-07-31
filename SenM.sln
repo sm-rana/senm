@@ -5,6 +5,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "genSCADA", "genSCADA.vcxpro
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "SenM", "SenM.vcxproj", "{C0C099C7-D649-40C6-8ACE-77532B2B7416}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "SFMC", "SFMC\SFMC.vcxproj", "{30F850AE-920A-498E-BE21-B68BB5040BE9}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
@@ -15,10 +17,10 @@ Global
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{091D005F-9823-49AB-89BE-FA075763C0A0}.Debug|Win32.ActiveCfg = Debug|x64
 		{091D005F-9823-49AB-89BE-FA075763C0A0}.Debug|Win32.Build.0 = Debug|x64
-		{091D005F-9823-49AB-89BE-FA075763C0A0}.Debug|x64.ActiveCfg = Debug|Win32
+		{091D005F-9823-49AB-89BE-FA075763C0A0}.Debug|x64.ActiveCfg = Debug|x64
 		{091D005F-9823-49AB-89BE-FA075763C0A0}.Release|Win32.ActiveCfg = Release|Win32
 		{091D005F-9823-49AB-89BE-FA075763C0A0}.Release|Win32.Build.0 = Release|Win32
-		{091D005F-9823-49AB-89BE-FA075763C0A0}.Release|x64.ActiveCfg = Release|Win32
+		{091D005F-9823-49AB-89BE-FA075763C0A0}.Release|x64.ActiveCfg = Release|x64
 		{C0C099C7-D649-40C6-8ACE-77532B2B7416}.Debug|Win32.ActiveCfg = Debug|x64
 		{C0C099C7-D649-40C6-8ACE-77532B2B7416}.Debug|Win32.Build.0 = Debug|x64
 		{C0C099C7-D649-40C6-8ACE-77532B2B7416}.Debug|x64.ActiveCfg = Debug|x64
@@ -27,6 +29,13 @@ Global
 		{C0C099C7-D649-40C6-8ACE-77532B2B7416}.Release|Win32.Build.0 = Release|Win32
 		{C0C099C7-D649-40C6-8ACE-77532B2B7416}.Release|x64.ActiveCfg = Release|x64
 		{C0C099C7-D649-40C6-8ACE-77532B2B7416}.Release|x64.Build.0 = Release|x64
+		{30F850AE-920A-498E-BE21-B68BB5040BE9}.Debug|Win32.ActiveCfg = Debug|x64
+		{30F850AE-920A-498E-BE21-B68BB5040BE9}.Debug|Win32.Build.0 = Debug|x64
+		{30F850AE-920A-498E-BE21-B68BB5040BE9}.Debug|x64.ActiveCfg = Debug|x64
+		{30F850AE-920A-498E-BE21-B68BB5040BE9}.Release|Win32.ActiveCfg = Release|Win32
+		{30F850AE-920A-498E-BE21-B68BB5040BE9}.Release|Win32.Build.0 = Release|Win32
+		{30F850AE-920A-498E-BE21-B68BB5040BE9}.Release|x64.ActiveCfg = Release|x64
+		{30F850AE-920A-498E-BE21-B68BB5040BE9}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

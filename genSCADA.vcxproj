@@ -41,9 +41,10 @@
     <PlatformToolset>v110</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
-    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>v110</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
@@ -72,6 +73,7 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>true</LinkIncremental>
+    <OutDir>..\..\SenM_remote_test</OutDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -91,17 +93,19 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
-      <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_USRDLL;EPANETLT_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_USRDLL;EPANETLT_EXPORTS;VTK_AUTOLOAD_PATH;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <WarningLevel>Level3</WarningLevel>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>C:\Users\owner\SkyDrive\Research\CODE\senm;C:\Users\owner\SkyDrive\Research\CODE\senm\rngs;C:\Users\owner\SkyDrive\Research\CODE\senm\epanet-lt;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\owner\Documents\GitHub\vtk\VTK\Graphics;C:\Users\owner\Documents\GitHub\vtk\VTK\Hybrid;C:\Users\owner\Documents\GitHub\vtk\VTK\Geovis;C:\Users\owner\Documents\GitHub\vtk\build-jc5;C:\Users\owner\Documents\GitHub\vtk\VTK\Common;C:\Users\owner\Documents\GitHub\vtk\VTK\Rendering;C:\Users\owner\Documents\GitHub\vtk\VTK\Filtering;C:\Users\owner\Documents\GitHub\vtk\build-jc5\IO;C:\Users\owner\Documents\GitHub\vtk\build-jc5\Filters;C:\Users\owner\Documents\GitHub\vtk\build-jc5\Common;C:\Users\owner\Documents\GitHub\vtk\build-jc5\Rendering;$(ProjectDir)rngs;$(ProjectDir)epanet-lt;$(ProjectDir)SFMC</AdditionalIncludeDirectories>
       <CompileAs>Default</CompileAs>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>NotSet</SubSystem>
+      <AdditionalLibraryDirectories>C:\Users\owner\Documents\GitHub\vtk\build-jc5\bin\Debug;libs</AdditionalLibraryDirectories>
+      <AdditionalDependencies>libgoto2.lib;vtkGraphics.lib;vtkRendering.lib;vtkCommon.lib;vtkFiltering.lib;vtkGeovis.lib;*.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -125,12 +129,15 @@
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <WarningLevel>Level3</WarningLevel>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <AdditionalIncludeDirectories>C:\Users\owner\Documents\GitHub\vtk\VTK\Graphics;C:\Users\owner\Documents\GitHub\vtk\VTK\Hybrid;C:\Users\owner\Documents\GitHub\vtk\VTK\Geovis;C:\Users\owner\Documents\GitHub\vtk\build-jc5;C:\Users\owner\Documents\GitHub\vtk\VTK\Common;C:\Users\owner\Documents\GitHub\vtk\VTK\Rendering;C:\Users\owner\Documents\GitHub\vtk\VTK\Filtering;C:\Users\owner\Documents\GitHub\vtk\build-jc5\IO;C:\Users\owner\Documents\GitHub\vtk\build-jc5\Filters;C:\Users\owner\Documents\GitHub\vtk\build-jc5\Common;C:\Users\owner\Documents\GitHub\vtk\build-jc5\Rendering;$(ProjectDir)rngs;$(ProjectDir)epanet-lt;$(ProjectDir)SFMC</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <SubSystem>Windows</SubSystem>
+      <SubSystem>NotSet</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
+      <AdditionalLibraryDirectories>C:\Users\owner\Documents\GitHub\vtk\build-jc5-2\bin\MinSizeRel;libs</AdditionalLibraryDirectories>
+      <AdditionalDependencies>libgoto2.lib;vtkGraphics.lib;vtkRendering.lib;vtkCommon.lib;vtkFiltering.lib;vtkGeovis.lib;*.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -150,13 +157,22 @@
     <ClCompile Include="epanet-lt\rules.c" />
     <ClCompile Include="epanet-lt\smatrix.c" />
     <ClCompile Include="epanet-lt\testLT.c" />
-    <ClCompile Include="genSCADA.cpp" />
-    <ClCompile Include="rngs\rngs.c" />
-    <ClCompile Include="rngs\rvgs.c" />
+    <ClCompile Include="rngs\rvgs.cpp" />
     <ClCompile Include="ScadaGenerator.cpp" />
-    <ClCompile Include="testSG.cpp" />
+    <ClCompile Include="SFMC\SFMT.c" />
+    <ClCompile Include="testSG.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="testVarima.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="testVisi.cpp" />
+    <ClCompile Include="Varima.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="clapack.h" />
     <ClInclude Include="DataSource.h" />
     <ClInclude Include="epanet-lt\enumstxt.h" />
     <ClInclude Include="epanet-lt\funcs.h" />
@@ -167,9 +183,15 @@
     <ClInclude Include="epanet-lt\toolkit.h" />
     <ClInclude Include="epanet-lt\types.h" />
     <ClInclude Include="epanet-lt\vars.h" />
-    <ClInclude Include="rngs\rngs.h" />
+    <ClInclude Include="f2c.h" />
     <ClInclude Include="rngs\rvgs.h" />
     <ClInclude Include="ScadaGenerator.h" />
+    <ClInclude Include="SFMC\SFMT-common.h" />
+    <ClInclude Include="SFMC\SFMT-params.h" />
+    <ClInclude Include="SFMC\SFMT-params19937.h" />
+    <ClInclude Include="SFMC\SFMT-sse2.h" />
+    <ClInclude Include="SFMC\SFMT.h" />
+    <ClInclude Include="Varima.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

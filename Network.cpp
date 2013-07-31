@@ -1,6 +1,8 @@
 #include <cstring>
 #include <cstdio>
+#include <tchar.h>
 #include <Windows.h>
+#include "Percentile.h"
 #include "Network.h"
 #include "buildControl.h"
 
@@ -22,6 +24,7 @@ Network::Network() { //setdefaults() in input1.c
 	Dmult     = 1.0;             /* Demand multiplier              */ 
 
 	MaxJuncs = Njuncs = 0;
+	Nusers = 0;
 	MaxTanks = Ntanks = 0;
 	MaxNodes = Nnodes = 0;
 	MaxPipes = Npipes = 0;
@@ -37,36 +40,38 @@ Network::Network() { //setdefaults() in input1.c
 }
 
 
-Network::ErrorCode Network::getNetwork(const char* inpfilename, Network *net) {
+Network::ErrorCode Network::getNetwork(LPCTSTR inpfilename, Network **net) {
 
 
-	if (inpfilename == NULL || strcmp(inpfilename, "") == 0)  {
+	if (inpfilename == NULL || _tcscmp(inpfilename, TEXT("")) == 0)  {
 		if (singleton == NULL) {
-			net = NULL;
+			*net = NULL;
+			_ftprintf(stderr, TEXT("No network has been loaded. Please specify a network file.\n"));
 			return NET_NOT_CREATED;
 		} else {  // use existing network
-			net = singleton;
+			*net = singleton;
 			return OK;
 		}
 	} 
 
 	if (singleton != NULL && 
-		strcmp(inpfilename, singleton->_inpfilename) == 0) {
+		_tcscmp(inpfilename, singleton->_inpfilename) == 0) {
 			// use existing network
-			net = singleton;
+			*net = singleton;
 			return OK;
 	} 
 
 	//otherwise, create a new network
 	FILE* infile;
-	infile = fopen(inpfilename, "rt");
+	infile = _tfopen(inpfilename, TEXT("rt"));
 	if (infile == NULL) {
-		net = NULL;
+		*net = NULL;
+		_ftprintf(stderr, TEXT("Cannot open the network file.\n"));
 		return CANT_OPEN_FILE;
 	}
 
 	singleton = new Network();
-	strcpy_s(singleton->_inpfilename, inpfilename);
+	_tcscpy_s(singleton->_inpfilename, inpfilename);
 
 	ErrorCode ec;
 	ec = singleton->_loadInp(infile);
@@ -75,10 +80,10 @@ Network::ErrorCode Network::getNetwork(const char* inpfilename, Network *net) {
 
 	if (ec != OK) {
 		delete(singleton);
-		net = NULL;
+		*net = NULL;
 		return ec;
 	} else {
-		net = singleton;
+		*net = singleton;
 		return OK;
 	}
 }
@@ -196,8 +201,13 @@ Network::ErrorCode Network::_loadInp(FILE* InFile) {
 	MaxLinks = MaxPipes + MaxPumps + MaxValves;
 	if (MaxPats < 1) MaxPats = 1;
 	if (ec == OK)    {
-		if (MaxJuncs < 1) ec = NOT_ENOUGH_NODES;   
-		else if (MaxTanks == 0) ec = NO_TANKS;   
+		if (MaxJuncs < 1) {
+			_ftprintf(stderr, TEXT("No nodes in the network.\n"));
+			ec = NOT_ENOUGH_NODES;   
+		} else if (MaxTanks == 0) {
+			_ftprintf(stderr, TEXT("No tank/reservoir in the network.\n"));
+			ec = NO_TANKS;   
+		}
 	}
 	if (ec!= OK) return ec;
 
@@ -229,7 +239,10 @@ Network::ErrorCode Network::_loadInp(FILE* InFile) {
 	
 
 	if (Node == NULL || Link == NULL || Pump == NULL || Valve == NULL
-		|| Pattern == NULL || Curve == NULL) return (MALLOC_ERROR);
+		|| Pattern == NULL || Curve == NULL) {
+			_ftprintf(stderr, TEXT("Cannot allocate memory.\n"));
+			return (MALLOC_ERROR);
+	}
 
 	/* Initialize pointers used in patterns, curves, and demand category lists */
 
@@ -303,6 +316,7 @@ Network::ErrorCode Network::_loadInp(FILE* InFile) {
 			case DEMANDS:	ec=demanddata(); break;
 			case STATUS:  ec=statusdata(); break;
 			case OPTIONS:	ec=optiondata(); break;
+			case COORDS: ec=coordata(); break; //load x-y coordinates for later building vtk graphics
 			// ignore other sections
 			}  
 			if (ec != OK) {
@@ -317,9 +331,12 @@ Network::ErrorCode Network::_loadInp(FILE* InFile) {
 		(ec = getpumpparams())
 		) return ec;
 
+	for (int ii = 1; ii<=MaxNodes; ++ii) 
+		if (Node[ii].coordFlag == 0) return NODE_COORDINATES_UNDEFINED;
+
 	// post-processing
 	adjustdata();
-	initunits();
+	initunits(); //set up unit conversion factors
 
 	ec = inittanks();
 	convertunits();
@@ -330,35 +347,150 @@ Network::ErrorCode Network::_loadInp(FILE* InFile) {
 	freeTmplist(Patlist);
     freeTmplist(Curvelist);
 
+	//file processing done.
+	//Now ENopenH() in epanet.c and openhyd() in hydraul.c
 	//createsparse() in smatrix.c,  prepare
-	/* Build node-link adjacency lists with parallel links removed. */
-	ec = buildlists(1);
 
+	/* Build node-link adjacency lists with parallel links removed. */
+	ec = buildlists(1);  
 	xparalinks();    /* Remove parallel links */
     countdegree();   /* Find degree of each junction */
+	//Adjlist and Degree are prepared
 
 	Ncoeffs = Nlinks;
-	   /* Re-order nodes to minimize number of non-zero coeffs.    */
-   /* in factorized solution matrix. At same time, adjacency   */
-   /* list is updated with links representing non-zero coeffs. */
+
+	/* Re-order nodes to minimize number of non-zero coeffs.    */
+    /* in factorized solution matrix. At same time, adjacency   */
+    /* list is updated with links representing non-zero coeffs. */
 	ec = reordernodes();
 
-   /* Allocate memory for sparse storage of positions of non-zero */
-   /* coeffs. and store these positions in vector NZSUB. */
+    /* Allocate memory for sparse storage of positions of non-zero */
+    /* coeffs. and store these positions in vector NZSUB. */
 	ec = storesparse(Njuncs);
 
-	   /* Free memory used for adjacency lists and sort */
-   /* row indexes in NZSUB to optimize linsolve().  */
+    /* Free memory used for adjacency lists and sort */
+    /* row indexes in NZSUB to optimize linsolve().  */
 	freelists();
 	ec = ordersparse(Njuncs);
 
-/* Re-build adjacency lists without removing parallel */
-   /* links for use in future connectivity checking.     */
-   buildlists(FALSE);
+    /* Re-build adjacency lists without removing parallel */
+    /* links for use in future connectivity checking.     */
+    buildlists(FALSE);
 
+	free(Degree);
 
+	//we can go as far as here
+	//allocmatrix() must be done in class Solver since we need parallelism
+	//see Solver.cpp
 
 	return ec;
+}
+
+Network::ErrorCode Network::get2d3dNet(vtkPolyData* net2d, vtkPolyData* net3d) {
+	double coords[3];
+	_tabUser = new int[MaxNodes];
+	_tabNodeIndex = new vtkIdType[MaxNodes+1];
+	_tabLinkIndex = new vtkIdType[MaxLinks+1];
+
+	vtkPoints* pts3 = vtkPoints::New();
+	vtkPoints* pts2 = vtkPoints::New();
+	vtkCellArray* ca = vtkCellArray::New();  // cells for nodes
+	vtkCellArray* cl = vtkCellArray::New();  // cells for links
+	vtkFloatArray* scalar_data = vtkFloatArray::New();
+	vtkPolyData* tpn1 = vtkPolyData::New();
+
+	int i;
+	for (i=1; i<=MaxNodes; ++i) {
+		coords[0] = Node[i].x;
+		coords[1] = Node[i].y;
+		coords[2] = Node[i].El * Ucf[ELEV];
+
+		pts3->InsertPoint(i-1, coords);
+		vtkIdType icell = i-1;
+		_tabNodeIndex[i] = ca->InsertNextCell(1, &icell);
+
+		// 2d
+		coords[2] = 0;
+		pts2->InsertPoint(i-1, coords);
+		
+		if (Node[i].D == NULL) {
+			scalar_data->InsertTuple1(i-1, 0);
+		} else {
+			scalar_data->InsertTuple1(i-1, Node[i].D->Base);
+			if (Node[i].D->Base >0) {// is it a water user?
+				_tabUser[Nusers] = i-1; //
+				Nusers++; 
+			}
+		}
+	}
+
+	for (i=1; i<=MaxLinks; ++i) {
+		vtkIdType jcell[2];
+		jcell[0] = Link[i].N1 - 1; // to vis index
+		jcell[1] = Link[i].N2 - 1;
+		_tabLinkIndex[i] = cl->InsertNextCell(2, jcell) + 
+			ca->GetNumberOfCells(); // this is very important to make each line cell id right when using the table to fetch
+	}
+
+	if(net3d) {
+		net3d->SetPoints(pts3);
+		net3d->SetVerts(ca);
+		net3d->SetLines(cl);
+		net3d->GetPointData()->SetScalars(scalar_data);
+	}
+	if (net2d) {
+		net2d->SetPoints(pts2);
+		net2d->SetVerts(ca);
+		net2d->SetLines(cl);
+		net2d->GetPointData()->SetScalars(scalar_data);
+	}
+	pts3->Delete();
+	pts2->Delete();
+	ca->Delete();
+	cl->Delete();
+	scalar_data->Delete();
+
+	return OK;
+
+}
+
+vtkIdType Network::index2CellId(int index, Network::FieldType type) {
+	//lookup cell ids
+	if (type <= PRESSURE) {//lookup node cellid
+		if (index >0 && index <= MaxNodes) 
+			return _tabNodeIndex[index];
+	} else {
+		if (index >0 && index <= MaxLinks) 
+			return _tabLinkIndex[index];
+	}
+	return -1;
+}
+
+vtkIdType Network::netId2CellId(char* netId, Network::FieldType type) {
+	//lookup cell id
+	if (type <= PRESSURE) {
+		HTIt jit = Nht.find(netId);
+		if (jit == Nht.end() ) return -1; //can't find the id
+		return index2CellId(jit->second, type);
+	} else {
+		HTIt jit = Lht.find(netId);
+		if (jit == Lht.end() ) return -1; //can't find the id
+		return index2CellId(jit->second, type);
+	}
+	return -1;
+}
+
+			
+
+double Network::getBaseDemandPercentile(double pc) {
+	if (pc<0 || pc>1) return -1;
+	IterativePercentile<double> ip(pc);
+	for (int i=1;i<MaxNodes;++i) {
+		if (Node[i].D != NULL && Node[i].D->Base > 0)
+			ip.add(Node[i].D->Base);
+	}
+	return ip.get();
+
 }
 
 
@@ -776,6 +908,12 @@ void Network::initunits()
 **  Input:   none
 **  Output:  none
 **  Purpose: determines unit conversion factors
+**			Ucfs convert everything to 
+				cfs for flow rates
+				psi for (free) pressure
+				feet for elevation, total head, headloss, tank levels, pipe length
+				inch for pipe diameter
+				feet per second for velocity
 **--------------------------------------------------------------
 */
 {
@@ -787,14 +925,14 @@ void Network::initunits()
 
    if (Unitsflag == SI)                            /* SI units */
    {
-	  dcf = 304.8;
-      qcf = 28.317;
+	  dcf = 304.8; //  km/feet
+      qcf = 28.317;  // lps/cfs
       if (Flowflag == LPM) qcf = 1699;
       if (Flowflag == MLD) qcf = 2.4466;
       if (Flowflag == CMH) qcf = 101.94;
       if (Flowflag == CMD) qcf = 2446.6;
       hcf = 0.3048;
-      if (Pressflag == METERS) pcf = 0.3048;
+      if (Pressflag == METERS) pcf = 0.3048;//  m/feet
       else pcf = 6.895*0.4333;
       wcf = 0.7457;
    }
@@ -1483,6 +1621,7 @@ Network::ErrorCode  Network::juncdata()
    
    char*	junc_name = new char[MAX_ID];
    strncpy_s(junc_name, MAX_ID, Tok[0], MAX_ID-1);
+   strncpy(Node[Njuncs].ID, junc_name, MAX_ID-1);
    if (!(Nht.insert(HTPair(junc_name, Njuncs))).second)  //id exists
 	   return(NODE_ID_EXISTS);
 
@@ -1515,6 +1654,30 @@ Network::ErrorCode  Network::juncdata()
    return(OK);
 }                        /* end of juncdata */
 
+Network::ErrorCode  Network::coordata() {
+	int n;
+	double x,y;
+	n = Ntokens;
+
+	/* Extract data from tokens */
+	n = Ntokens;
+	if (n < 3) return(SYNTAX_ERR_OF_COORDINATES); 
+	if (!getfloat(Tok[1],&x)) return(ILLEGAL_NUMBER);
+	if (!getfloat(Tok[2],&y)) return(ILLEGAL_NUMBER);
+
+
+	/* Otherwise find node (and pattern) being referenced */
+	HTIt jnode = Nht.find(Tok[0]);
+	if (jnode == Nht.end())
+		return(NODE_UNDEFINED);
+
+	Node[jnode->second].x = x;
+	Node[jnode->second].y = y;
+	Node[jnode->second].coordFlag = 1;
+
+	return OK;
+
+}
 
 Network::ErrorCode  Network::tankdata()
 /*

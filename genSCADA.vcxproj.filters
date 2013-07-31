@@ -1,0 +1,125 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="ScadaGenerator.cpp" />
+    <ClCompile Include="epanet-lt\epanet.c">
+      <Filter>epanet-lt</Filter>
+    </ClCompile>
+    <ClCompile Include="epanet-lt\hash.c">
+      <Filter>epanet-lt</Filter>
+    </ClCompile>
+    <ClCompile Include="epanet-lt\hydraul.c">
+      <Filter>epanet-lt</Filter>
+    </ClCompile>
+    <ClCompile Include="epanet-lt\inpfile.c">
+      <Filter>epanet-lt</Filter>
+    </ClCompile>
+    <ClCompile Include="epanet-lt\input1.c">
+      <Filter>epanet-lt</Filter>
+    </ClCompile>
+    <ClCompile Include="epanet-lt\input2.c">
+      <Filter>epanet-lt</Filter>
+    </ClCompile>
+    <ClCompile Include="epanet-lt\input3.c">
+      <Filter>epanet-lt</Filter>
+    </ClCompile>
+    <ClCompile Include="epanet-lt\lemontiger.c">
+      <Filter>epanet-lt</Filter>
+    </ClCompile>
+    <ClCompile Include="epanet-lt\mempool.c">
+      <Filter>epanet-lt</Filter>
+    </ClCompile>
+    <ClCompile Include="epanet-lt\output.c">
+      <Filter>epanet-lt</Filter>
+    </ClCompile>
+    <ClCompile Include="epanet-lt\quality.c">
+      <Filter>epanet-lt</Filter>
+    </ClCompile>
+    <ClCompile Include="epanet-lt\report.c">
+      <Filter>epanet-lt</Filter>
+    </ClCompile>
+    <ClCompile Include="epanet-lt\rules.c">
+      <Filter>epanet-lt</Filter>
+    </ClCompile>
+    <ClCompile Include="epanet-lt\smatrix.c">
+      <Filter>epanet-lt</Filter>
+    </ClCompile>
+    <ClCompile Include="epanet-lt\testLT.c">
+      <Filter>epanet-lt</Filter>
+    </ClCompile>
+    <ClCompile Include="DataSource.cpp" />
+    <ClCompile Include="SFMC\SFMT.c">
+      <Filter>sfmt</Filter>
+    </ClCompile>
+    <ClCompile Include="rngs\rvgs.cpp">
+      <Filter>rngs</Filter>
+    </ClCompile>
+    <ClCompile Include="Varima.cpp" />
+    <ClCompile Include="testVarima.cpp" />
+    <ClCompile Include="testSG.cpp" />
+    <ClCompile Include="testVisi.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="ScadaGenerator.h" />
+    <ClInclude Include="epanet-lt\enumstxt.h">
+      <Filter>epanet-lt</Filter>
+    </ClInclude>
+    <ClInclude Include="epanet-lt\funcs.h">
+      <Filter>epanet-lt</Filter>
+    </ClInclude>
+    <ClInclude Include="epanet-lt\hash.h">
+      <Filter>epanet-lt</Filter>
+    </ClInclude>
+    <ClInclude Include="epanet-lt\lemontiger.h">
+      <Filter>epanet-lt</Filter>
+    </ClInclude>
+    <ClInclude Include="epanet-lt\mempool.h">
+      <Filter>epanet-lt</Filter>
+    </ClInclude>
+    <ClInclude Include="epanet-lt\text.h">
+      <Filter>epanet-lt</Filter>
+    </ClInclude>
+    <ClInclude Include="epanet-lt\toolkit.h">
+      <Filter>epanet-lt</Filter>
+    </ClInclude>
+    <ClInclude Include="epanet-lt\types.h">
+      <Filter>epanet-lt</Filter>
+    </ClInclude>
+    <ClInclude Include="epanet-lt\vars.h">
+      <Filter>epanet-lt</Filter>
+    </ClInclude>
+    <ClInclude Include="DataSource.h" />
+    <ClInclude Include="rngs\rvgs.h">
+      <Filter>rngs</Filter>
+    </ClInclude>
+    <ClInclude Include="Varima.h" />
+    <ClInclude Include="SFMC\SFMT.h">
+      <Filter>sfmt</Filter>
+    </ClInclude>
+    <ClInclude Include="SFMC\SFMT-common.h">
+      <Filter>sfmt</Filter>
+    </ClInclude>
+    <ClInclude Include="SFMC\SFMT-params.h">
+      <Filter>sfmt</Filter>
+    </ClInclude>
+    <ClInclude Include="SFMC\SFMT-params19937.h">
+      <Filter>sfmt</Filter>
+    </ClInclude>
+    <ClInclude Include="SFMC\SFMT-sse2.h">
+      <Filter>sfmt</Filter>
+    </ClInclude>
+    <ClInclude Include="clapack.h" />
+    <ClInclude Include="f2c.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="epanet-lt">
+      <UniqueIdentifier>{dbb80168-7dbb-4845-85fd-2a095b042a3f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="rngs">
+      <UniqueIdentifier>{f23e0b13-841f-41a4-8ecf-d704c83f987d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="sfmt">
+      <UniqueIdentifier>{aac10b63-13de-4967-8ec7-ce79d3ed404b}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

@@ -30,6 +30,8 @@ demand patterns and baseline demands
 #include <winnt.h>
 #include <windows.h>
 #include <map>
+#include <tchar.h>
+#include "vtkincludes.h"
 
 class Network {
 public:
@@ -56,6 +58,7 @@ public:
 		SYNTAX_ERR_OF_DEMAND,
 		SYNTAX_ERR_OF_STATUS,
 		SYNTAX_ERR_OF_OPTIONS,
+		SYNTAX_ERR_OF_COORDINATES,
 		ILLEGAL_NUMBER,
 		DEMAND_PATTERN_UNDEFINED,
 		GRADE_PATTERN_UNDEFINED,
@@ -66,6 +69,7 @@ public:
 		VOLUME_CURVE_UNDEFINED,
 		CURVE_UNDEFINED,
 		NODE_UNDEFINED,
+		NODE_COORDINATES_UNDEFINED,
 		LINK_UNDEFINED,
 		LINK_IS_A_LOOP,
 		NODE_NOT_LINKED,
@@ -76,9 +80,122 @@ public:
 		TANK_LEVEL_INVALID
 	} ;
 
-	// get the Network instance, if no one exists,  created.
+	  enum FieldType { /* Network variables:                  */
+	//this enum is also used by Channel definition (see datasource.h),  
+	//the database schema (see .sql files), and graphic objects (see sensor.h)
+	//to denote the type of the physical varaible of a Scada system sensor
+		  
+		  //-----NODE VARIABLES -----//
+		  //------------- sensor type 'L' -------------//
+		  ELEV,         /*   nodal elevation                   */
+						// also for tank levels, sensor type 'L', dim: Length
+		  
+						
+		  DEMAND,       /*   nodal demand flow                 */
+		  HEAD,         /*   nodal hydraulic head              */
+						// total head, dim: Length
+		  
+		  //------------- sensor type 'P' -------------//			
+		  PRESSURE,     /*   nodal pressure                    */
+						//  free head, sensor type 'P', 
+						// dim: Mass/(length*time^2) for hydraulic solver, 
+						//      Length for sensor / scada db
+		 
+		  //-----LINK VARIABLES -----//
+		  LENGTH,       /*   link length                       */
+		  DIAM,         /*   link diameter                     */
+
+		  //------------- sensor type 'Q' -------------//
+		  FLOW,         /*   link flow rate                    */
+						//  pipe flow rate, sensor type 'Q',
+						//  dim: Length^3/time
+
+
+		  VELOCITY,     /*   link flow velocity                */
+		  HEADLOSS,     /*   link head loss                    */
+
+		  //------------- sensor type 'C' -------------//
+		  LSTATUS,      /*   link status                       */
+						// on/off status for links, sensor type 'C', no dim
+
+		  SETTING,      /*   pump/valve setting                */
+		  FRICTION,     /*   link friction factor              */
+
+		  //-----OTHER VARIABLES -----//
+		  POWER,        /*   pump power output                 */
+		  TIME,         /*   simulation time                   */
+		  VOLUME,       /*   tank volume                       */
+		  CLOCKTIME,    /*   simulation time of day            */
+		  FILLTIME,     /*   time to fill a tank               */
+		  DRAINTIME};   /*   time to drain a tank              */
+
+	// get the Network instance, if no one exists,  created it.
 	// If a network has been created, return it, in this case, inpfilename can be NULL.
-	static ErrorCode getNetwork(const char* inpfilename, Network *net);
+	static ErrorCode getNetwork(LPCTSTR inpfilename, Network **net);
+
+	// build a 2d and a 3d vtkNetwork polydata, 
+	// net2d and net3d must have been allocated,
+	// the scalars of the Polydatasets (attribute) at nodes (vertex-typed cells) 
+	// are the baseline water demands
+	ErrorCode get2d3dNet(vtkPolyData* net2d, vtkPolyData* net3d);
+
+	// lookup the net2d/3d graphic cell id from network index (1-order)
+	// the cellid < number of vertex cells (=MaxNodes) denotes nodes
+	// the cellid > number of vertex cells (=MaxNodes) denotes links
+	vtkIdType index2CellId(int index, FieldType type) ;
+
+	// look up the graphic cell id from network component id (string)
+	vtkIdType netId2CellId(char* id, FieldType type) ;
+
+	// look up the node id (index but 0-order) from a water user id (0-order)
+	// the 0-order node index is equivalent to the graphic cell id
+	int userId2NodeId(vtkIdType userid) {
+		if (userid >=0 && userid < Nusers)
+			return _tabUser[userid];
+		else return -1;
+	};
+
+	// number of nodes
+	int getNnodes() {return MaxNodes;};
+	int getNusers() {return Nusers;};
+
+	// look up the node id (string) from a node index (1-order)
+	void nodeId2NodeName(int nodeid, char** name) {
+		if (nodeid>0 && nodeid<=MaxNodes)
+			*name = Node[nodeid].ID;
+	};
+
+	// get the max baseline demand
+	double getMaxBaselineDemand() {
+		_maxBD = -DBL_MAX;
+		for (int i=1;i<MaxNodes;++i)
+			if (Node[i].D->Base > _maxBD)
+				_maxBD = Node[i].D->Base;
+		return _maxBD;
+	}
+	
+	// get the value of baseline demand value at a certain percentile (0 to 1)
+	double getBaseDemandPercentile(double pc);
+
+	LPTSTR report() {//report network information in a string
+		if (singleton) {
+			_stprintf(_info, TEXT(
+			"Network Info:\n\tTotal Nodes: %d, Tanks+Reservoirs: %d, Junctions: %d\n\tTotal Links: %d, Pipes: %d, Pumps: %d, Valves: %d\n"),
+			MaxNodes, MaxTanks, MaxJuncs, MaxLinks, MaxPipes, MaxPumps, MaxValves); 
+		} else {
+			_stprintf(_info, TEXT("Network not loaded.\n"));
+		}
+		return _info;
+	};
+
+protected:
+	TCHAR _info[512];
+	int* _tabUser; //lookup table, user id to node id (both start with 0)
+	vtkIdType *_tabNodeIndex, *_tabLinkIndex; //look up table for net2d/3d cellid
+	double _maxBD; //max baseline demand
+
+public:
+
 
 	// Free memory
 	~Network();
@@ -141,6 +258,9 @@ public:
 	{
 		char    ID[MAX_ID+1];    /* Node ID          */
 		double  El;             /* Elevation        */
+		double  x;				/* x-y coordinates of the node*/
+		double  y;
+		char    coordFlag;		/* the coordinates of the node is specified*/
 		Pdemand D;              /* Demand pointer   */
 	}  Snode;
 
@@ -164,7 +284,7 @@ public:
 	typedef struct     /* TANK OBJECT */
 	{
 		int    Node;     /* Node index of tank       */
-		   double A;        /* Tank area                */
+		double A;        /* Tank area                */
    double Hmin;     /* Minimum water elev       */
    double Hmax;     /* Maximum water elev       */
    double H0;       /* Initial water elev       */
@@ -219,7 +339,9 @@ public:
 	/* Pointer to adjacency list item */
 	typedef struct Sadjlist *Padjlist; 
 
-	typedef enum _SectNum  {TITLE,JUNCTIONS,RESERVOIRS,TANKS,PIPES,PUMPS,
+	typedef enum _SectNum  
+	
+	{TITLE,JUNCTIONS,RESERVOIRS,TANKS,PIPES,PUMPS,
                   VALVES,CONTROLS,RULES,DEMANDS,SOURCES,EMITTERS,
                   PATTERNS,CURVES,QUALITY,STATUS,ROUGHNESS,ENERGY,
                   REACTIONS,MIXING,REPORT,TIMES,OPTIONS,
@@ -247,49 +369,31 @@ public:
 	{PSI,          /*   pounds per square inch            */
 	KPA,          /*   kiloPascals                       */
 	METERS};      /*   meters                            */
+
 	enum FormType                  /* Head loss formula:                  */
 	{HW,           /*   Hazen-Williams                    */
 	DW,           /*   Darcy-Weisbach                    */
 	CM};          /*   Chezy-Manning                     */
-	 enum NodeType                  /* Type of node:                       */
+
+	enum NodeType                  /* Type of node:                       */
                 {JUNC,          /*    junction                         */
                  RESERV,        /*    reservoir                        */
                  TANK};         /*    tank                             */
 
- enum LinkType                  /* Type of link:                       */
+	enum LinkType                  /* Type of link:                       */
                  {CV,           /*    pipe with check valve            */
                   PIPE,         /*    regular pipe                     */
 				  PUMP,			/*    pump  */
 				  VALVE};                                    
- enum StatType                  /* Link/Tank status:                   */
+	enum StatType                  /* Link/Tank status:                   */
                  {CLOSED,       /*   closed                            */
 				  OPEN};         /*   open                              */
-  enum PumpType                  /* Type of pump curve:                 */
+	enum PumpType                  /* Type of pump curve:                 */
                 {CONST_HP,      /*    constant horsepower              */
                  POWER_FUNC,    /*    power function                   */
                  CUSTOM,        /*    user-defined custom curve        */
                  NOCURVE};
-  enum FieldType                 /* Network variables:                  */
-                 {ELEV,         /*   nodal elevation                   */
-                  DEMAND,       /*   nodal demand flow                 */
-                  HEAD,         /*   nodal hydraulic head              */
-                  PRESSURE,     /*   nodal pressure                    */
-                  LENGTH,       /*   link length                       */
-                  DIAM,         /*   link diameter                     */
-                  FLOW,         /*   link flow rate                    */
-                  VELOCITY,     /*   link flow velocity                */
-                  HEADLOSS,     /*   link head loss                    */
 
-                  LSTATUS,       /*   link status                       */
-                  SETTING,      /*   pump/valve setting                */
-                  FRICTION,     /*   link friction factor              */
-
-                  POWER,        /*   pump power output                 */
-                  TIME,         /*   simulation time                   */
-                  VOLUME,       /*   tank volume                       */
-                  CLOCKTIME,    /*   simulation time of day            */
-                  FILLTIME,     /*   time to fill a tank               */
-                  DRAINTIME};   /*   time to drain a tank              */
 
 
 private:
@@ -317,12 +421,9 @@ private:
 
 	// Component iterators (for input processing only)
 	int Njuncs, Nnodes, Ntanks, Npipes, Npumps, Nvalves, Nlinks;
+	int Nusers;  //water users (base demand >0)
 	int Ntokens;  /* Number of tokens in input line    */
 	STmplist *PrevPat, *PrevCurve;
-	Padjlist *Adjlist;              /* Node adjacency lists         */	
-	int *Degree;    /* Number of links adjacent to each node, used by the 
-					solver  */
-	int Ncoeffs;               /* Number of non-0 matrix coeffs*/
 
 	// Components
 	Snode    *Node;                 /* Node data                    */
@@ -331,11 +432,14 @@ private:
 	Spump    *Pump;                 /* Pump data                    */
 	Svalve   *Valve;                /* Valve data                   */
 
-	int *Ndx;        /* Index of link's coeff. in Aij       */
-	int      *Order;      /* Node-to-row of A                    */
+	Padjlist *Adjlist;              /* Node adjacency lists         */	
+	int *Degree;    /* Number of links adjacent to each node, used by the solver  */
+	int Ncoeffs;               /* Number of non-0 matrix coeffs*/
+	int     *Ndx;        /* Index of link's coeff. in Aij       */
+	int     *Order;      /* Node-to-row of A                    */
 	int 	*Row;        /* Row-to-node of A                    */
-		/*
-	** The following arrays store the positions of the non-zero coeffs.    
+	
+	/** The following arrays store the positions of the non-zero coeffs.    
 	** of the lower triangular portion of A whose values are stored in Aij:
 	*/
 	int      *XLNZ,       /* Start position of each column in NZSUB  */
@@ -369,12 +473,13 @@ private:
 	// default constructor, not accessible publicly
 	Network(); 
 	//members
-	char _inpfilename[MAX_PATH];
+	TCHAR _inpfilename[MAX_PATH];
 
 	// Load data from INP file
 	ErrorCode _loadInp(FILE*);
 
 	// process a line and store characters to Tok[]
+	ErrorCode coordata();
 	ErrorCode juncdata();
 	ErrorCode tankdata();
 		ErrorCode inittanks();
@@ -430,7 +535,7 @@ private:
 
 	ErrorCode addcurve(char*);
 
-	// misc post loading staff
+	// misc post loading stuff
 	void adjustdata();
 
 	//helper functions:

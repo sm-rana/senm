@@ -14,8 +14,8 @@ for more details.   */
 
 #pragma once
 
-/* The SenM class Solver 
-Thread-safe EPANET-style hydraulic solver, maintains own set of intermediate
+/* The hydraulic solver class
+Thread-safe EPANET-style hydraulic solver, maintains its own set of intermediate
 variables and result variables
 
 */
@@ -74,10 +74,10 @@ private:   //members
 	*/
 
 	double   *D,                    /* Node actual demand           */
-		*E,                    /* Emitter flows                */
-		*K,                    /* Link settings                */
-		*Q,                    /* Link flows                   */
-		*X;                    /* General purpose array        */
+			*E,                    /* Emitter flows                */
+			*K,                    /* Link settings                */
+			*Q,                    /* Link flows                   */
+			*X;                    /* General purpose array        */
 
 
 	double   *H;                    /* Node heads                   */
@@ -92,8 +92,8 @@ private:   //members
 		*Y;          /* Flow correction factors             */
 
 public:    //api
-	// Create a solver to compute against a network
-	static ErrorCode createSolver(Network* net, Solver* outsolver);
+	// Create a solver to compute against a network, allocate memory if needed
+	static ErrorCode createSolver(Network* net, Solver** outsolver);
 
 	// (Re)set control info collected by a snapshot
 	// If no snapshots are provided, use 
@@ -120,14 +120,10 @@ public:    //api
 	~Solver();
 
 
-private:
-	Solver();
+protected:
+	Solver(); //no public constructor
 
 	void initlinkflow(int link, char status, double setting);
-
-
-
-
 
 };
 

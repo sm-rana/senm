@@ -194,6 +194,10 @@ typedef struct            /* NODE OBJECT */
    double  C0;             /* Initial quality  */
    double  Ke;             /* Emitter coeff.   */
    char    Rpt;            /* Reporting flag   */
+
+   // added by JC for visualization -- x and y coordinates
+   double x;
+   double y;
 }  Snode;
 
 typedef struct            /* LINK OBJECT */

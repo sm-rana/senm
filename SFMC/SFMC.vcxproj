@@ -19,9 +19,9 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{C0C099C7-D649-40C6-8ACE-77532B2B7416}</ProjectGuid>
+    <ProjectGuid>{30F850AE-920A-498E-BE21-B68BB5040BE9}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
-    <RootNamespace>SenM</RootNamespace>
+    <RootNamespace>SFMC</RootNamespace>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -35,8 +35,6 @@
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v110</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
-    <UseOfAtl>Dynamic</UseOfAtl>
-    <UseOfMfc>Dynamic</UseOfMfc>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
@@ -79,7 +77,6 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <OutDir>..\..\SenM_remote_test</OutDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -87,10 +84,10 @@
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;%(PreprocessorDefinitions);</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
-      <SubSystem>NotSet</SubSystem>
+      <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
   </ItemDefinitionGroup>
@@ -100,17 +97,12 @@
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;%(PreprocessorDefinitions);</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>C:\Users\owner\Documents\GitHub\vtk\VTK\Hybrid;C:\Users\owner\Documents\GitHub\vtk\VTK\Graphics;C:\Users\owner\Documents\GitHub\vtk\VTK\Charts;C:\Users\owner\Documents\GitHub\vtk\VTK\Geovis;C:\Users\owner\Documents\GitHub\vtk\build-jc5;C:\Users\owner\Documents\GitHub\vtk\VTK\Common;C:\Users\owner\Documents\GitHub\vtk\VTK\Rendering;C:\Users\owner\Documents\GitHub\vtk\VTK\Filtering;C:\Users\owner\Documents\GitHub\vtk\build-jc5\IO;C:\Users\owner\Documents\GitHub\vtk\build-jc5\Filters;C:\Users\owner\Documents\GitHub\vtk\build-jc5\Common;C:\Users\owner\Documents\GitHub\vtk\build-jc5\Rendering;$(ProjectDir)rngs;$(ProjectDir)epanet-lt;$(ProjectDir)SFMC</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>C:\Users\owner\Documents\GitHub\vtk\build-jc5\bin\Debug;libs</AdditionalLibraryDirectories>
-      <AdditionalDependencies>libgoto2.lib;vtksys.lib;vtkcharts.lib;vtkGraphics.lib;vtkRendering.lib;vtkCommon.lib;vtkFiltering.lib;vtkGeovis.lib;vtkHybrid.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib</AdditionalDependencies>
-      <ShowProgress>NotSet</ShowProgress>
-      <IgnoreSpecificDefaultLibraries>
-      </IgnoreSpecificDefaultLibraries>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -121,10 +113,10 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
-      <SubSystem>Windows</SubSystem>
+      <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
@@ -138,54 +130,26 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>C:\Users\owner\Documents\GitHub\vtk\VTK\Hybrid;C:\Users\owner\Documents\GitHub\vtk\VTK\Graphics;C:\Users\owner\Documents\GitHub\vtk\VTK\Geovis;C:\Users\owner\Documents\GitHub\vtk\build-jc5;C:\Users\owner\Documents\GitHub\vtk\VTK\Common;C:\Users\owner\Documents\GitHub\vtk\VTK\Rendering;C:\Users\owner\Documents\GitHub\vtk\VTK\Filtering;C:\Users\owner\Documents\GitHub\vtk\build-jc5\IO;C:\Users\owner\Documents\GitHub\vtk\build-jc5\Filters;C:\Users\owner\Documents\GitHub\vtk\build-jc5\Common;C:\Users\owner\Documents\GitHub\vtk\build-jc5\Rendering;$(ProjectDir)rngs;$(ProjectDir)epanet-lt;$(ProjectDir)SFMC</AdditionalIncludeDirectories>
-      <WholeProgramOptimization>true</WholeProgramOptimization>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
     </ClCompile>
     <Link>
-      <SubSystem>NotSet</SubSystem>
+      <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>libgoto2.lib;opengl32.lib;vtkGraphics.lib;vtkRendering.lib;vtkCommon.lib;vtkFiltering.lib;vtkGeovis.lib;vtkHybrid.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>C:\Users\owner\Documents\GitHub\vtk\build-jc5-2\bin\MinSizeRel;libs</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="DataSource.h" />
-    <ClInclude Include="Network.h" />
-    <ClInclude Include="Percentile.h" />
-    <ClInclude Include="Population.h" />
-    <ClInclude Include="rngs\rvgs.h" />
-    <ClInclude Include="SenM.h" />
-    <ClInclude Include="Sensor.h" />
-    <ClInclude Include="SFMC\SFMT-common.h" />
-    <ClInclude Include="SFMC\SFMT-params.h" />
-    <ClInclude Include="SFMC\SFMT-params19937.h" />
-    <ClInclude Include="SFMC\SFMT-sse2.h" />
-    <ClInclude Include="SFMC\SFMT.h" />
-    <ClInclude Include="Solver.h" />
-    <ClInclude Include="Varima.h" />
-    <ClInclude Include="Viewer.h" />
-    <ClInclude Include="vtkincludes.h" />
+    <ClCompile Include="..\..\..\..\..\Downloads\SFMT-src-1.4\test.c" />
+    <ClCompile Include="SFMT.c" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="buildControl.h" />
-    <ClCompile Include="DataSource.cpp" />
-    <ClCompile Include="Network.cpp" />
-    <ClCompile Include="Population.cpp" />
-    <ClCompile Include="rngs\rvgs.cpp" />
-    <ClCompile Include="SenM.cpp" />
-    <ClCompile Include="Sensor.cpp" />
-    <ClCompile Include="SFMC\SFMT.c" />
-    <ClCompile Include="Solver.cpp" />
-    <ClCompile Include="testDataSource.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="testSenM.cpp" />
-    <ClCompile Include="Varima.cpp" />
-    <ClCompile Include="Viewer.cpp" />
+    <ClInclude Include="SFMT-common.h" />
+    <ClInclude Include="SFMT-params.h" />
+    <ClInclude Include="SFMT-params19937.h" />
+    <ClInclude Include="SFMT-sse2.h" />
+    <ClInclude Include="SFMT.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

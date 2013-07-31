@@ -103,6 +103,30 @@ int  juncdata()
    return(0);
 }                        /* end of juncdata */
 
+int  coordata() {
+	int n,j;
+	
+
+   double x,y;
+   n = Ntokens;
+
+/* Extract data from tokens */
+   n = Ntokens;
+   if (n < 3) return(201); 
+   if (!getfloat(Tok[1],&x)) return(202);
+   if (!getfloat(Tok[2],&y)) return(202);
+
+
+/* Otherwise find node (and pattern) being referenced */
+   if ((j = findnode(Tok[0])) == 0) 
+	   return(0);
+
+   Node[j].x = x;
+   Node[j].y = y;
+
+   return 0;
+
+}
 
 int  tankdata()
 /*

@@ -1,6 +1,5 @@
 #include <Windows.h>
 #include <sqlext.h>
-#include <strsafe.h>
 #include "DataSource.h"
 
 
@@ -18,7 +17,7 @@ DataSource::DataSource(unsigned dt_in, Provider* prov) :
 	n_prov(0),
 	n_chan(0) {
 		if (addProvider(prov))
-		fprintf(stderr, "DataSource cannot add a provider.\n");
+		_ftprintf(stderr, TEXT("DataSource cannot add a provider.\n"));
 }
 
 
@@ -48,26 +47,26 @@ Channel* DataSource::getChan(int chan_id) {
 }
 
 void DataSource::dumpChannelsInfo() {
-	fprintf(stderr, 
-		"DataSource Info\nTime Quantum: %d Sec, Num. of Channels: %d\n", 
+	_ftprintf(stderr, 
+		TEXT("DataSource Info\nTime Quantum: %d Sec, Num. of Channels: %d\n"), 
 		dt, n_chan);
-	char* type, *status;
+	TCHAR* type, *status;
 	for(Channel* chan_it=channel_list; chan_it; chan_it = chan_it->next) {
 		switch (chan_it->mtype) {
-			case Network::LSTATUS: type = "ON/OFF"; break;
-			case Network::FLOW: type ="Pipe Flowrate"; break;
-			case Network::PRESSURE: type="Pressure"; break;
-			case Network::HEAD: type="Water Level or Head"; break;
-			default: type="Unknown measurement";
+			case Network::LSTATUS: type = TEXT("ON/OFF"); break;
+			case Network::FLOW: type = TEXT("Pipe Flowrate"); break;
+			case Network::PRESSURE: type=TEXT("Pressure"); break;
+			case Network::HEAD: type= TEXT("Water Level or Head"); break;
+			default: type= TEXT("Unknown measurement");
 		}
 		switch (chan_it->status) {
-		case Channel::OK: status = "OK"; break;
+		case Channel::OK: status = TEXT("OK"); break;
 		case Channel::DATA_ERR: case Channel::DATA_OUTBOUND:
-			status = "Anormly detected"; break;
+			status = TEXT("Anormaly detected"); break;
 		}
 				
-		fprintf(stderr, 
-			"Channel [%d]: Provider: %d, EPANET id: %s, Type: %s, Status: %s\n", 
+		_ftprintf(stderr, TEXT(
+			"Channel [%d]: Provider: %d, EPANET id: %S, Type: %s, Status: %s\n"), 
 			chan_it->key, (unsigned)chan_it->provider, 
 			chan_it->name, type, status);
 	}
@@ -91,8 +90,8 @@ DataSource::Err DataSource::getSnapshots(Tstamp t_in,
 		}
 	}
 	return OK;
-	
 }
+
 
 DataSource::~DataSource() {
 	//destroy all channels
@@ -107,8 +106,8 @@ DataSource::~DataSource() {
 
 
 /* Class Provider implementation */
-const char Provider::t1[MAX_TABLE_NAME] = "Msmts";  // fact table
-const char Provider::t2[MAX_TABLE_NAME] = "Channels";  // metadata for channel info
+const TCHAR Provider::dat_tab[MAX_TABLE_NAME] = TEXT("Msmts");  // fact table
+const TCHAR Provider::chan_tab[MAX_TABLE_NAME] = TEXT("Channels");  // metadata for channel info
 
 
 Provider::Provider() 
@@ -122,18 +121,17 @@ Provider::Provider()
 }
 
 // Connect to a database with given dsn string
-Provider::Err Provider::connect(const char* dsn_in  /* Data source name*/
+Provider::Err Provider::connect(LPCTSTR dsn_in  /* Data source name*/
 					) {
 
-	SQLWCHAR	dsn[MAX_DSN_LEN];  // data source name
-    WCHAR       wszInput[MAX_SQL_LEN];
+	SQLTCHAR	dsn[MAX_DSN_LEN];  // data source name
 	RETCODE		rc;  //return code
 
     // Allocate an environment
 
     if (SQLAllocHandle(SQL_HANDLE_ENV, SQL_NULL_HANDLE, &hEnv) == SQL_ERROR)
     {
-        fwprintf(stderr, L"Unable to allocate an environment handle\n");
+        _tprintf(TEXT("Unable to allocate an environment handle\n"));
         return ENV_NOT_ALLOC;
     }
 
@@ -156,9 +154,10 @@ Provider::Err Provider::connect(const char* dsn_in  /* Data source name*/
 
 	// connect to the database
 	// make a copy of dsn
-	mbstowcs(dsn, dsn_in, MAX_DSN_LEN);
+	if (_tcscpy_s(dsn, MAX_DSN_LEN, dsn_in)) // DSN TOO LONG
+		return DSN_TOO_LONG_OR_NULL;
 
-	SQLWCHAR dsn_out[MAX_DSN_LEN];
+	SQLTCHAR dsn_out[MAX_DSN_LEN];
 
 	if (rc = SQLDriverConnect(hDbc, /*Connection*/
 			GetDesktopWindow(), /*no window handle is applicable*/
@@ -172,7 +171,7 @@ Provider::Err Provider::connect(const char* dsn_in  /* Data source name*/
 		handleDiagnosticRecord(hDbc, SQL_HANDLE_DBC, rc);
 		if (rc==SQL_ERROR) return CANT_CONNECT_DB;
 	} else {
-		fwprintf(stderr, L"DB connected.\n");
+		_ftprintf(stderr, TEXT("DB connected.\n"));
 	}
 
 	//Allocate the statement handle
@@ -192,8 +191,8 @@ Provider::Err Provider::connect(const char* dsn_in  /* Data source name*/
 }
 
 Provider::Err   Provider::check(
-	const char* dat_table_name,  /* Name of the data table*/
-	const char* meta_table_name /*name of the metadata table*/
+	LPCTSTR dat_table_name,  /* Name of the data table*/
+	LPCTSTR meta_table_name /*name of the metadata table*/
 	) {
 
 	//Test availablility of table and data rows
@@ -216,14 +215,13 @@ Provider::Err Provider::getDataAt(SQL_TIMESTAMP_STRUCT timestamp,
 		if ((hEnv == NULL) || (hDbc = NULL) || (hStmt == NULL) )
 			return DB_CONN_NOT_READY;
 
-		SQLRETURN rc;
-		if (!hStmt_dat_prepared) {
-			rc = SQLPrepareA(hStmt_dat, (SQLCHAR*)
+		SQLTCHAR sqltext[MAX_SQL_LEN];
+		_stprintf(sqltext, TEXT(
 				"SELECT\
 				TIME_TO_SEC(TIMEDIFF(time, DATE_ADD(?, INTERVAL ? SECOND))), \
 				value \
 				FROM\
-				msmts \
+				%s \
 				WHERE \
 				cid = ? \
 				AND \
@@ -231,7 +229,11 @@ Provider::Err Provider::getDataAt(SQL_TIMESTAMP_STRUCT timestamp,
 				ORDER BY \
 				ABS(TIME_TO_SEC(TIMEDIFF(\
 				time, DATE_ADD(?, INTERVAL ? SECOND)))) \
-				ASC LIMIT 1;",  SQL_NTS);
+				ASC LIMIT 1;"), dat_tab);
+			
+		SQLRETURN rc;
+		if (!hStmt_dat_prepared) {
+			rc = SQLPrepare(hStmt_dat, sqltext,  SQL_NTS);
 			if (rc) {
 				handleDiagnosticRecord(hStmt_dat, SQL_HANDLE_STMT, rc);
 				if (rc==SQL_ERROR) return CANT_PREPARE_QUERY;
@@ -279,13 +281,13 @@ void Provider::handleDiagnosticRecord(SQLHANDLE      hHandle,
                              RETCODE        RetCode){
 	SQLSMALLINT iRec = 0;
     SQLINTEGER  iError;
-    WCHAR       wszMessage[1000];
-    WCHAR       wszState[SQL_SQLSTATE_SIZE+1];
+    TCHAR       wszMessage[1000];
+    TCHAR       wszState[SQL_SQLSTATE_SIZE+1];
 
 
     if (RetCode == SQL_INVALID_HANDLE)
     {
-        fwprintf(stderr, L"Invalid handle!\n");
+        _ftprintf(stderr, TEXT("Invalid handle!\n"));
         return;
     }
 
@@ -295,13 +297,13 @@ void Provider::handleDiagnosticRecord(SQLHANDLE      hHandle,
                          wszState,
                          &iError,
                          wszMessage,
-                         (SQLSMALLINT)(sizeof(wszMessage) / sizeof(WCHAR)),
+                         (SQLSMALLINT)(sizeof(wszMessage) / sizeof(TCHAR)),
                          (SQLSMALLINT *)NULL) == SQL_SUCCESS)
     {
         // Hide data truncated..
-        if (wcsncmp(wszState, L"01004", 5))
+        if (wcsncmp(wszState, TEXT("01004"), 5))
         {
-            fwprintf(stderr, L"[%5.5s] %s (%d)\n", wszState, wszMessage, iError);
+            _ftprintf(stderr, TEXT("[%5.5s] %s (%d)\n"), wszState, wszMessage, iError);
         }
     }
 
@@ -313,20 +315,24 @@ Provider::Err Provider::loadChannels(
 	unsigned* n_chan_out    /* number of channels created */
 	) {
 		RETCODE rc;
-		SQLCHAR sqltext[MAX_SQL_LEN];
-		sprintf((char*)sqltext, "SELECT id, net_id_str, msmt_t FROM %s;", t2);
+		SQLTCHAR sqltext[MAX_SQL_LEN];
+		_stprintf(sqltext, 
+			TEXT("SELECT id, net_id_str, msmt_t, l_lim, r_lim FROM %s;"), chan_tab);
 
 		
 		SQLUINTEGER id; 
 		SQLCHAR net_id[MAX_NET_ID_LEN];
 		SQLCHAR type[2];
-		SQLLEN	id_indi, netid_indi, type_indi; //indicators
+		SQLDOUBLE llim, rlim; //left (lower) and right limits of the sensor
+		SQLLEN	id_indi, netid_indi, type_indi, ll_indi, rl_indi; //indicators
 
 		SQLBindCol(hStmt, 1, SQL_C_ULONG, &id, 0, &id_indi);
 		SQLBindCol(hStmt, 2, SQL_C_CHAR, &net_id, MAX_NET_ID_LEN, &netid_indi);
 		SQLBindCol(hStmt, 3, SQL_C_CHAR, &type, 2, &type_indi);
+		SQLBindCol(hStmt, 4, SQL_C_DOUBLE, &llim, 0, &ll_indi);
+		SQLBindCol(hStmt, 5, SQL_C_DOUBLE, &rlim, 0, &rl_indi);
 
-		if (rc = SQLExecDirectA(hStmt, sqltext, SQL_NTS)) {
+		if (rc = SQLExecDirect(hStmt, sqltext, SQL_NTS)) {
 			handleDiagnosticRecord(hStmt, SQL_HANDLE_STMT, rc);
 			if (rc==SQL_ERROR) return CANT_LOAD_CHANNELS;
 		}
@@ -347,15 +353,17 @@ Provider::Err Provider::loadChannels(
 			aChan->provider = this;
 			switch (type[0]) {
 				case 'C': aChan->mtype = Network::LSTATUS; break;
-				case 'L': aChan->mtype = Network::HEAD; break;
+				case 'L': aChan->mtype = Network::HEAD; break; //actually, tank/reservior level
 				case 'Q': aChan->mtype = Network::FLOW; break;
-				case 'P': aChan->mtype = Network::PRESSURE; break;
+				case 'P': aChan->mtype = Network::PRESSURE; break; //actually, nodal free head
 				default: return UNKNOWN_MSMT_TYPE; 
 			}
 			
+			aChan->lower_lim = llim;
+			aChan->upper_lim = rlim;
 			aChan->mindex = 0; //unset, deferred to network assignment
 			//unit type unset
-			// rse, lower_lim, and upper_lim, err_data should be defined 
+			// rse, err_data should be defined 
 			aChan->status = Channel::OK;
 
 			//insert the channel
@@ -389,7 +397,7 @@ Provider::~Provider() {
         SQLFreeHandle(SQL_HANDLE_ENV, hEnv);
     }
 
-    fwprintf(stderr, L"\nDisconnected.");
+    _ftprintf(stderr, TEXT("\nDisconnected."));
 }
 
 

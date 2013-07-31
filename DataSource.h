@@ -16,6 +16,9 @@ for more details.   */
 #include <sql.h>
 #include <sqlext.h>
 #include "Network.h"
+#include <tchar.h>
+#include <atltime.h>
+#include <strsafe.h>
 
 class Provider;
 struct Channel;
@@ -26,12 +29,6 @@ struct Channel;
 class DataSource
 /* Data storage and channel/provider manager for the aligned sensor data */
 {
-protected:
-	//static const int BUF_LEN = 1000; // number of time steps record in data buffer
-
-	Channel* channel_list; // list of data channels
-	int n_prov, n_chan;  //number of data providers and channels
-	unsigned	dt;  // time interval between snapshots, in seconds
 
 public:
 	enum Err {OK,
@@ -57,20 +54,40 @@ public:
 	/*get a channel with given channel id, if not found return NULL*/
 	Channel* getChan(int id);
 
-	/*get the n snapshots at and before a specified time, 
-	the snapshot pointer must already be allocated,
-	snapshot should at least have n_chan*(n+1) doubles*/
+	// return channel list
+	Channel* getChanList() {return channel_list;};
+
+	/*get the n snapshots at or before a specified time, 
+	snapshot should already be allocated to contain n_chan*(n+1) doubles*/
 	Err getSnapshots(Tstamp t_in, unsigned n, double* snapshots);
 
-	// debug only
+	/* get a data snapshot (wrapper) */
+	Err getASnapshot(CTime ct, double* snapshot){
+		Tstamp tp;
+		tp.year = ct.GetYear();
+		tp.month = ct.GetMonth();
+		tp.day = ct.GetDay();
+		tp.hour = ct.GetHour();
+		tp.minute = ct.GetMinute();
+		tp.second = ct.GetSecond();
+		tp.fraction = 0;
+		return getSnapshots(tp, 0, snapshot);
+	};
+
 	/*dump data about channels and providers*/
 	void dumpChannelsInfo();
-
-	/*check current snapshot*/
 
 
 	DataSource();
 	~DataSource(); //clean all providers, release memory of the data buffer
+
+protected:
+	//static const int BUF_LEN = 1000; // number of time steps record in data buffer
+
+	Channel* channel_list; // list of data channels
+	int n_prov, n_chan;  //number of data providers and channels
+	unsigned	dt;  // time interval between snapshots, in seconds
+
 };
 
 
@@ -104,25 +121,26 @@ public:
 		DB_CONN_NOT_READY,
 		CANT_QUERY_DATA,
 		NO_DATA_FOR_THE_CHANNEL,
-		CANT_PREPARE_QUERY
+		CANT_PREPARE_QUERY,
+		DSN_TOO_LONG_OR_NULL
 		
 			};
-	Err connect(const char* dsn);  /*odbc data source name*/
+	Err connect(LPCTSTR dsn);  /*odbc data source name*/
 
-	Err check(const char* dat_table_name,
-			 const char* meta_table_name); /* check data tables ok */ 
+	Err check(LPCTSTR dat_table_name,
+			 LPCTSTR meta_table_name); /* check data tables ok */ 
 
 	/* create channels and load channel information */
-	Err loadChannels(Channel** /* out put the list head of channels */
+	Err loadChannels(Channel** /* output the list head of channels */
 		, unsigned* /*output the number of channels*/); 
 
 	/* get a (observational) data point from a channel 
-	 that is left-closest to a specific timestamp*/
+	at a specific timestamp or left-closest to the timestamp*/
 	Err getDataAt(SQL_TIMESTAMP_STRUCT timestamp, 
 			  int timeshift,  /* desired time shift of time stamp, in sec*/
 			  int chan_key,   /* the desired channel*/
 			  double* data_out,    /* The data */
-			  int* time_offset_out  /*diff of required and returned timestamp, 
+			  int* time_offset_out  /*diff of desired and returned timestamp, 
 								in seconds, NULL if this info is not needed*/ 
 			  );
 	
@@ -137,8 +155,8 @@ protected:
                              RETCODE        RetCode);
 
 protected:
-	static const char t1[MAX_TABLE_NAME];  // fact table name string
-	static const char t2[MAX_TABLE_NAME];  // metadata table name string
+	static const TCHAR dat_tab[MAX_TABLE_NAME];  // fact table name string
+	static const TCHAR chan_tab[MAX_TABLE_NAME];  // metadata table name string
 };
 
 
