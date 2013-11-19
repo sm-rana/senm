@@ -18,55 +18,55 @@ SenMInterationStyle::Err SenMInterationStyle::init(SenM* handler_in, CRITICAL_SE
 }
 
 void SenMInterationStyle::OnMouseMove() {
-		vtkRenderWindow* rw = this->GetInteractor()->GetRenderWindow();
-		int x,y;
-		this->GetInteractor()->GetEventPosition(x, y);
-		//_pk->PickProp(x, y, rw->GetRenderers()->GetFirstRenderer());
-		//vtkPropAssembly* ac = _pk->GetPropAssembly();
+    vtkRenderWindow* rw = this->GetInteractor()->GetRenderWindow();
+    int x,y;
+    this->GetInteractor()->GetEventPosition(x, y);
+    //_pk->PickProp(x, y, rw->GetRenderers()->GetFirstRenderer());
+    //vtkPropAssembly* ac = _pk->GetPropAssembly();
 
-		rw->GetRenderers()->InitTraversal();
-		vtkRenderer* left = rw->GetRenderers()->GetNextItem();
-		vtkRenderer* right = rw->GetRenderers()->GetNextItem();
+    rw->GetRenderers()->InitTraversal();
+    vtkRenderer* left = rw->GetRenderers()->GetNextItem();
+    vtkRenderer* right = rw->GetRenderers()->GetNextItem();
 
-		if (left && left->IsInViewport(x,y)) {
-			if (_debug) _tprintf(TEXT("Int-style (%p), Try picking from left (%p) at (%d,%d) using picker (%p).\n"), this, left, x, y, _pkCell);
-			//_pk->Pick(x, y, 0, left);
-			if (_pkCell->Pick(x, y, 0, left)) {
-				//if (_debug) _tprintf(TEXT("Done picking.\n"));
+    if (left && left->IsInViewport(x,y)) {
+        if (_debug) _tprintf(TEXT("Int-style (%p), Try picking from left (%p) at (%d,%d) using picker (%p).\n"), this, left, x, y, _pkCell);
+        //_pk->Pick(x, y, 0, left);
+        if (_pkCell->Pick(x, y, 0, left)) {
+            //if (_debug) _tprintf(TEXT("Done picking.\n"));
 
-				vtkPropAssembly* pa = _pkCell->GetPropAssembly();
-				if (_debug) _tprintf(TEXT("Done getting propassembly %p.\n"), pa);
-				
-				//if (pa != NULL) {
-				//vtkIdType cid = _pk->GetCellId();
-				
-				rw->SetCurrentCursor(VTK_CURSOR_HAND);
-				if (pa) _hl->updateSelection(this, pa);
-				
-				OnTimer();
-			} else {
-				rw->SetCurrentCursor(VTK_CURSOR_ARROW);
-			}
-		}
+            vtkPropAssembly* pa = _pkCell->GetPropAssembly();
+            if (_debug) _tprintf(TEXT("Done getting propassembly %p.\n"), pa);
+            
+            //if (pa != NULL) {
+            //vtkIdType cid = _pk->GetCellId();
+            
+            rw->SetCurrentCursor(VTK_CURSOR_HAND);
+            if (pa) _hl->updateSelection(this, pa);
+            
+            OnTimer();
+        } else {
+            rw->SetCurrentCursor(VTK_CURSOR_ARROW);
+        }
+    }
 
-		if (right && right->IsInViewport(x,y)) {
-			_pkCell->Pick(x, y, 0, right);
-			vtkMapper* mp=vtkMapper::SafeDownCast(_pkCell->GetMapper());
-			vtkIdType cid = _pkCell->GetCellId();
+    if (right && right->IsInViewport(x,y)) {
+        _pkCell->Pick(x, y, 0, right);
+        vtkMapper* mp=vtkMapper::SafeDownCast(_pkCell->GetMapper());
+        vtkIdType cid = _pkCell->GetCellId();
 
-			if (mp != NULL){
-				rw->SetCurrentCursor(VTK_CURSOR_HAND);
-				_hl->updateSelection(this, mp, cid);
-				//rw->Render();
-				OnTimer();
-			} else {
-			rw->SetCurrentCursor(VTK_CURSOR_ARROW);
-			}
-		}
-		
-		if (_propProtector!=NULL) EnterCriticalSection(_propProtector);
-		vtkInteractorStyleTrackballCamera::OnMouseMove();
-		if (_propProtector!=NULL) LeaveCriticalSection(_propProtector);
+        if (mp != NULL){
+            rw->SetCurrentCursor(VTK_CURSOR_HAND);
+            _hl->updateSelection(this, mp, cid);
+            //rw->Render();
+            OnTimer();
+        } else {
+        rw->SetCurrentCursor(VTK_CURSOR_ARROW);
+        }
+    }
+    
+    if (_propProtector!=NULL) EnterCriticalSection(_propProtector);
+    vtkInteractorStyleTrackballCamera::OnMouseMove();
+    if (_propProtector!=NULL) LeaveCriticalSection(_propProtector);
 }
 
 void SenMInterationStyle::OnTimer() {
@@ -203,7 +203,7 @@ SenM::Err SenM::init(LPCTSTR netn, LPCTSTR dcs, CTime* st, unsigned dt, Varima* 
 	_dmodel = dm;
 
 	Err err = OK;
-	//err = initPara();
+	err = initPara();
 	//err = initOpenGL();
 	
 	_ftprintf(stderr, TEXT("About to init scada data\n"));
@@ -780,7 +780,7 @@ SenM::Err SenM::run() {
 	// main thread
 
 	//spawn threads for visualization
-	//_beginthreadex(NULL, 0, &SenM::_startParaEl, this, 0, NULL);
+	_beginthreadex(NULL, 0, &SenM::_startParaEl, this, 0, NULL);
 	
 	if (_hasDB) {
 		_beginthreadex(NULL, 0, &SenM::_startScadaEl, this, 0, NULL);

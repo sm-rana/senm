@@ -5,6 +5,8 @@
 #include "Sensor.h"
 
 //default values
+//
+//
 vtkPolyData* Sensor::_net = NULL;
 double Sensor::_z_scaling_factor = 0;
 double Sensor::_xy_unit_len = 0;

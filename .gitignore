@@ -4,6 +4,7 @@
 # Some patterns to ignore for this specific repo
 libs/*
 *.dat
+.clang_complete
 #
 
 
