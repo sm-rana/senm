@@ -35,11 +35,11 @@ class SenM;
 class SenMInterationStyle : public vtkInteractorStyleTrackballCamera {
 	// iteration style for handling mouse events
 protected:
-	int _debug;
-	vtkPropPicker* _pk;
-	vtkCellPicker* _pkCell;
-	SenM* _hl; // event handler
-	CRITICAL_SECTION* _propProtector;
+
+	vtkPropPicker*		_pk;
+	vtkCellPicker*		_pkCell;
+	SenM*				_hl; // event handler
+	CRITICAL_SECTION*	_propProtector;
 
 public:
 	enum Err { OK, NO_RENDERER, NO_EVENT_HANDLER };
@@ -52,27 +52,19 @@ public:
 	Err init(SenM* handler_in, CRITICAL_SECTION* propProtector) ;
 
 	
-	virtual void OnMouseMove() ;
+	virtual void	OnMouseMove() ;
 	//have to redefine the following for multi-threading
 
 	virtual void 	OnLeftButtonDown ();
-
 	virtual void 	OnLeftButtonUp ();
-
 	virtual void 	OnMiddleButtonDown ();
-
 	virtual void 	OnMiddleButtonUp ();
-
 	virtual void 	OnRightButtonDown ();
-
 	virtual void 	OnRightButtonUp ();
-
 	virtual void 	OnMouseWheelForward ();
-
 	virtual void 	OnMouseWheelBackward ();
 
-
-	virtual void OnTimer();
+	virtual void	OnTimer();
 };
 
 
@@ -88,45 +80,9 @@ enum Err {
 	ARIMA_ERROR
 };
 
-SenM(): _dbcstr(NULL),_netfile(NULL),
-		_source(NULL), _net(NULL), _dmodel(NULL),
-		_elev_exf(1.0/4), _para_exf(1.0/20)
-{
-	_pcPara = 0.9; //by default only 10% of the node phi - cov parameters are visualized
-	_lastSel = _lastSelCov = -1;
-	_lastSelSensor = NULL;
-	_covTh = 0.3;
-	_senm_delay = 1;
-	_debug = 0;
-	_hasDB = 1;
-	InitializeCriticalSection(&_access_sensor);
-}
-
-
-public:
-	Err init(LPCTSTR network_file_name,
-			 LPCTSTR database_connection_string, 
-			 CTime*	 senm_start_time, /* if NULL use current time*/
-			 unsigned senm_time_quantum_in_seconds,
-			 Varima* demand_model);
-
-	Err updateSelection(SenMInterationStyle*, vtkPropAssembly*);
-	Err updateSelection(SenMInterationStyle*, vtkMapper* selMp, vtkIdType cellid);
-	Err run();
 
 protected:
-	//three event loops starting functions for parameter, scada, and demand viewing
-	static unsigned WINAPI _startParaEl(void* obj); 
-	static unsigned WINAPI _startScadaEl(void* obj);
-	static unsigned WINAPI _startDemandEl(void* obj);
-	
-	//init subroutine
-	//Err initOpenGL();
-	Err initPara();
-	Err initScada();
 
-protected:
-	int _debug; //debug flag
 
 	LPCTSTR _dbcstr;  //db connection string
 	int _hasDB;  //if using a database, if not, the program is only
@@ -226,8 +182,46 @@ protected:
 
 	double _elev_exf; //elevation exaggration factor (apprx. ratio of elevation range/x-y range)
 	double _para_exf; //parameter exaggration factor (apprx. ratio of parameter range/x-y range)
+	double _xy_unit_factor; //Factor used to determine _xy_unit for size of visuals
+
+public:
+
+	SenM(): _dbcstr(NULL),_netfile(NULL),
+		_source(NULL), _net(NULL), _dmodel(NULL),
+		_elev_exf(0.25), _para_exf(0.05), _xy_unit_factor(400)
+	{
+		_pcPara = 0.9; //by default only 10% of the node phi - cov parameters are visualized
+		_lastSel = _lastSelCov = -1;
+		_lastSelSensor = NULL;
+		_covTh = 0.3;
+		_senm_delay = 1;
+
+		_hasDB = 1;
+		InitializeCriticalSection(&_access_sensor);
+	}
 
 
+
+	Err init(LPCTSTR network_file_name,
+			 LPCTSTR database_connection_string, 
+			 CTime*	 senm_start_time, /* if NULL use current time*/
+			 unsigned senm_time_quantum_in_seconds,
+			 Varima* demand_model);
+
+	Err updateSelection(SenMInterationStyle*, vtkPropAssembly*);
+	Err updateSelection(SenMInterationStyle*, vtkMapper* selMp, vtkIdType cellid);
+	Err run();
+
+protected:
+	//three event loop starting functions for parameter, scada, and demand viewing
+	static unsigned WINAPI _startParaEl(void* obj); 
+	static unsigned WINAPI _startScadaEl(void* obj);
+	static unsigned WINAPI _startDemandEl(void* obj);
+	
+	//init subroutine
+	//Err initOpenGL();
+	Err initPara();
+	Err initScada();
 	
 
 };

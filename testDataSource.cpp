@@ -7,14 +7,14 @@
 #ifdef TEST_DATA_SOURCE
 
 int wmain() {
-	const char* connection_string = "DSN=jcx;\
+	LPCTSTR connection_string = TEXT("DSN=jcx;\
 		 DESCRIPTION={Jinduan's Senm Database};\
 		 SERVER=localhost;\
 		 UID=rtx_db_agent;\
 		 PWD=rtx_db_agent;\
 		 DATABASE=rtx_demo_db;\
 		 PORT=3306;\
-		 FOUND_ROWS=1";
+		 FOUND_ROWS=1");
 
 	Provider* provider = new Provider;
 	provider->connect(connection_string);

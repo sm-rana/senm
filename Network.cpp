@@ -382,6 +382,12 @@ Network::ErrorCode Network::_loadInp(FILE* InFile) {
 	//we can go as far as here
 	//allocmatrix() must be done in class Solver since we need parallelism
 	//see Solver.cpp
+	
+	// compute Nusers;
+	Nusers = 0;
+	for (int ii = 1; ii<=MaxNodes; ++ii)
+		if (Node[ii].D && Node[ii].D->Base >0) Nusers++; 
+		
 
 	return ec;
 }
@@ -399,8 +405,8 @@ Network::ErrorCode Network::get2d3dNet(vtkPolyData* net2d, vtkPolyData* net3d) {
 	vtkFloatArray* scalar_data = vtkFloatArray::New();
 	vtkPolyData* tpn1 = vtkPolyData::New();
 
-	int i;
-	for (i=1; i<=MaxNodes; ++i) {
+	int i, iUsers;
+	for (i=1, iUsers=0; i<=MaxNodes; ++i) {
 		coords[0] = Node[i].x;
 		coords[1] = Node[i].y;
 		coords[2] = Node[i].El * Ucf[ELEV];
@@ -418,8 +424,9 @@ Network::ErrorCode Network::get2d3dNet(vtkPolyData* net2d, vtkPolyData* net3d) {
 		} else {
 			scalar_data->InsertTuple1(i-1, Node[i].D->Base);
 			if (Node[i].D->Base >0) {// is it a water user?
-				_tabUser[Nusers] = i-1; //
-				Nusers++; 
+				_tabUser[iUsers] = i-1; //
+				iUsers++;
+
 			}
 		}
 	}

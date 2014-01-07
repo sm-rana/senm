@@ -1,27 +1,33 @@
-// A sensor is a widget representing a scada channel/sensor int the vtk
-// visualization scene.
-
-// Five types of sensors are provided:
-// Tank. water surface level (L) monitored, min and max possible level fixed
-// Reservoir/water source. level (L) monitored
-// Piezometer. Free water head (P) monitored
-// Flow rate meter. Flow rate (Q) monitored
-// Pump/valve on/off switch.  Status (C) monitored
 #pragma once
 #include "vtkincludes.h"
 #include "Network.h"
 #include "DataSource.h"
 
-class Sensor {//super class of all sensors
+///  A widget representing a scada channel/sensor in the vtk scenes.
+/**	 Sensor class is the super class of all sensors. Currently
+  * five types of sensors are provided as sub class of Sensor:
+  *	- Tank. water surface level (L) monitored, min and max possible level fixed
+  *	- Reservoir/water source. level (L) monitored
+  *	- Piezometer. Free water head (P) monitored
+  *	- Flow rate meter. Flow rate (Q) monitored
+  *	- Pump/valve on/off switch.  Status (C) monitored
+*/
+
+class Sensor {
 public:
 
-	//set parameters
+	/// Set common parameters for all sensors.
+	/** \param [in] Base vtk 3D network
+	*	\param [in] z-axis scaling factor
+	*	\param [in] x,y-axis unit length for 3D visuals
+	*/
 	static void setCommonParameters(vtkPolyData* net, double z_scaling, double unit) ;
 
-	//factory
-	static Sensor* makeSensor(
-		vtkIdType cellid /*cell id the sensor is located*/,
-		Channel* chan /*channel*/) ;
+	/// Factory method for producing Sensor's sub class
+	/** \param [in] Vtk cell id of where the sensor is located. can be point or line
+	*	\param [in] Pointer to the Channel struct for the Sensor
+	*/
+	static Sensor* makeSensor(vtkIdType cellid , Channel* chan) ;
 
 	//get the geometry for viewing
 	virtual vtkPropAssembly* getGeom() {return _geom;};

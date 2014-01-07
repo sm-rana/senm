@@ -6,7 +6,6 @@
 vtkStandardNewMacro(SenMInterationStyle);
 
 SenMInterationStyle::Err SenMInterationStyle::init(SenM* handler_in, CRITICAL_SECTION* propProtector) { 
-	_debug = 0;
 	if (handler_in == NULL) return NO_EVENT_HANDLER;
 	_pk = vtkPropPicker::New();
 	_pkCell = vtkCellPicker::New();
@@ -29,13 +28,18 @@ void SenMInterationStyle::OnMouseMove() {
     vtkRenderer* right = rw->GetRenderers()->GetNextItem();
 
     if (left && left->IsInViewport(x,y)) {
-        if (_debug) _tprintf(TEXT("Int-style (%p), Try picking from left (%p) at (%d,%d) using picker (%p).\n"), this, left, x, y, _pkCell);
-        //_pk->Pick(x, y, 0, left);
+#ifdef _DEBUG
+		_tprintf(TEXT("Int-style (%p), Try picking from left (%p) at (%d,%d) using picker (%p).\n"), 
+						this, left, x, y, _pkCell);
+#endif
+		//_pk->Pick(x, y, 0, left);
         if (_pkCell->Pick(x, y, 0, left)) {
-            //if (_debug) _tprintf(TEXT("Done picking.\n"));
+            
 
             vtkPropAssembly* pa = _pkCell->GetPropAssembly();
-            if (_debug) _tprintf(TEXT("Done getting propassembly %p.\n"), pa);
+#ifdef _DEBUG
+			_tprintf(TEXT("Done getting propassembly %p.\n"), pa);
+#endif
             
             //if (pa != NULL) {
             //vtkIdType cid = _pk->GetCellId();
@@ -128,15 +132,18 @@ void SenMInterationStyle::OnMouseWheelBackward() {
 SenM::Err SenM::init(LPCTSTR netn, LPCTSTR dcs, CTime* st, unsigned dt, Varima* dm) {
 	//show  time 
 	CTime cur_time = CTime::GetCurrentTime();
-	_tprintf(TEXT("[0] Init SenM... Current system time: %s, current local time: %s\n"), 
+	_tprintf(TEXT("[0] Init SenM... \n\tCurrent OS system time: %s, current OS local time: %s\n"), 
 		cur_time.FormatGmt(TEXT("Year %Y, Day %j at %H:%M:%S")), 
 		cur_time.Format(TEXT("%c")) );
 	
 	// fetch time
 	_senm_time = *st;
+	_tprintf(TEXT("\tSenM system time: %s, SenM local time: %s\n"), 
+		cur_time.FormatGmt(TEXT("Year %Y, Day %j at %H:%M:%S")),
+		cur_time.Format(TEXT("%c"))
+		); 
 
-
-	//init database and network file
+	//init Network
 	_tprintf(TEXT("[0] Loading network (.inp) file...\n"));
 	if (Network::getNetwork(netn, &_net)) {
 		_ftprintf(stderr, TEXT("Cannot open network file %s  \n"), netn);
@@ -144,6 +151,7 @@ SenM::Err SenM::init(LPCTSTR netn, LPCTSTR dcs, CTime* st, unsigned dt, Varima* 
 	}
 	_tprintf(_net->report());
 
+	//init DB
 	if (dcs == NULL) {
 		_hasDB = 0; //no database, (testing only)
 		_tprintf(TEXT("[0] No Database...\n"));
@@ -157,7 +165,7 @@ SenM::Err SenM::init(LPCTSTR netn, LPCTSTR dcs, CTime* st, unsigned dt, Varima* 
 		}
 
 		_tprintf(TEXT("[0] Loading channels...\n"));
-		if (dt == 0) {
+		if (dt <= 0) {
 			_ftprintf(stderr, TEXT("Time quantum must be greater than zero. \n"));
 		}
 		_source = new DataSource(dt);
@@ -169,18 +177,41 @@ SenM::Err SenM::init(LPCTSTR netn, LPCTSTR dcs, CTime* st, unsigned dt, Varima* 
 		_tprintf(TEXT("\tTime quantum: %d, Number of Channels: %d\n"), _dt, _source->getNChan());
 	}
 
-	_tprintf(TEXT("[0] Building base network...\n"));
+	//check demand model
+	_tprintf(TEXT("[0] Checking demand model...\n"));
+	if (dm == NULL)  {
+
+		_ftprintf(stderr, TEXT("ARIMA model Error \n"));
+		return ARIMA_ERROR;
+	}
+	_dmodel = dm;
+
+
+	if (_dmodel->getN() != _net->getNusers()) {
+		_ftprintf(stderr, TEXT(
+			"ARIMA model dimension doesn't match number of network water users.\n"));
+		return ARIMA_ERROR;
+	}
+	_n = _dmodel->getN();
+	_tprintf(TEXT("\tNetwork water users: %d\n"), _n);
+
+
+	// Building base net visuals
+	_tprintf(TEXT("[0] Building base network visuals...\n"));
 	_net2d = vtkPolyData::New();
 	_net3d = vtkPolyData::New();
 	
 	_net->get2d3dNet(_net2d, _net3d);
-	// compute data bounds for better vis/ exeggration
+	// compute data bounds for better visualization with exaggeration
 	_net3d->ComputeBounds();
 	_net3d->GetBounds(bounds);
+
+	_z_scaling = (bounds[1]-bounds[0]+bounds[3]-bounds[2])/2*_elev_exf/(bounds[5]-bounds[4]);
+	_xy_unit = (bounds[1]-bounds[0]+bounds[3]-bounds[2])/_xy_unit_factor;
+
 	vtkTransformFilter* etff = vtkTransformFilter::New();
 	vtkTransform* etf = vtkTransform::New();
-	_z_scaling = (bounds[1]-bounds[0]+bounds[3]-bounds[2])/2*_elev_exf/(bounds[5]-bounds[4]);
-	_xy_unit = (bounds[1]-bounds[0]+bounds[3]-bounds[2])/400;
+
 	etf->Scale(1,1, _z_scaling); //elevation scale
 	etff->SetTransform(etf);
 	etff->SetInput(_net3d);
@@ -193,20 +224,13 @@ SenM::Err SenM::init(LPCTSTR netn, LPCTSTR dcs, CTime* st, unsigned dt, Varima* 
 	_net3dex->ComputeBounds();
 	_pmNet3d->SetInput(_net3dex);
 	
-	//check demand model
-	_tprintf(TEXT("[0] Checking demand model...\n"));
-	if (dm == NULL)  {
-
-		_ftprintf(stderr, TEXT("ARIMA model Error \n"));
-		return ARIMA_ERROR;
-	}
-	_dmodel = dm;
-
+	//building demand model visuals
 	Err err = OK;
 	err = initPara();
+
 	//err = initOpenGL();
 	
-	_ftprintf(stderr, TEXT("About to init scada data\n"));
+	_ftprintf(stderr, TEXT("Initializing scada data...\n"));
 
 	if (_hasDB) err = initScada();
 
@@ -330,13 +354,6 @@ SenM::Err SenM::init(LPCTSTR netn, LPCTSTR dcs, CTime* st, unsigned dt, Varima* 
 
 SenM::Err SenM::initPara() {
 
-	if (_dmodel->getN() != _net->getNusers()) {
-		_ftprintf(stderr, TEXT(
-			"ARIMA model dimension doesn't match number of network water users.\n"));
-		return ARIMA_ERROR;
-	}
-	_n = _dmodel->getN();
-	_tprintf(TEXT("\tNetwork water users: %d\n"), _n);
 
 	// vis pipeline for parameter Phi
 	_tprintf(TEXT("[0] Building AR parameter visualization...\n"));
@@ -361,8 +378,6 @@ SenM::Err SenM::initPara() {
 	_pmPhi->ScalarVisibilityOff();
 
 	double extent_ref = (bounds[1]-bounds[0]+bounds[3]-bounds[2])/2;
-	
-	double a = extent_ref /200; //x,y length of the column
 	double dth = _net->getBaseDemandPercentile(1-_pcPara);
 	
 	for (j=0, k=0; j<Nnode; ++j) {
@@ -391,10 +406,10 @@ SenM::Err SenM::initPara() {
 				} else {
 					zmin = tph; zmax = 0;
 				}
-				_acPhi[i*_n + k]->SetScale(a, a, tph);
+				_acPhi[i*_n + k]->SetScale(_xy_unit, _xy_unit, tph);
 				_acPhi[i*_n + k]->SetPosition(
-					coords[0]+a*zlineArrayOffset[_nPara][i][0],
-					coords[1]+a*zlineArrayOffset[_nPara][i][1],
+					coords[0]+ _xy_unit*zlineArrayOffset[_nPara][i][0],
+					coords[1]+ _xy_unit*zlineArrayOffset[_nPara][i][1],
 					tph/2);
 
 				_acPhi[i*_n + k]->GetProperty()->SetColor(
@@ -413,16 +428,16 @@ SenM::Err SenM::initPara() {
 
 	_sHLBox = NULL; 
 	_aNet2d = vtkActor::New();
-	//_aNet3d = vtkActor::New();
+	
 	_pmNet2d->ScalarVisibilityOff();
 	_aNet2d->SetMapper(_pmNet2d);
 	_aNet2d->GetProperty()->SetColor(0,1,1);
-	//_aNet3d->SetMapper(_pmNet3d);
+	
 
 	_dsBase = vtkPlaneSource::New();
-	_dsBase->SetOrigin(bounds[0]-extent_ref/100, bounds[2]-extent_ref/100, 0);
-	_dsBase->SetPoint1(bounds[0]-extent_ref/100, bounds[3]+extent_ref/100, 0);
-	_dsBase->SetPoint2(bounds[1]+extent_ref/100, bounds[2]-extent_ref/100, 0);
+	_dsBase->SetOrigin(bounds[0], bounds[2], 0);
+	_dsBase->SetPoint1(bounds[0], bounds[3], 0);
+	_dsBase->SetPoint2(bounds[1], bounds[2], 0);
 	_pmBase = vtkPolyDataMapper::New();
 	_pmBase->SetInput(_dsBase->GetOutput());
 	_aBase = vtkActor::New();
@@ -457,10 +472,6 @@ SenM::Err SenM::initPara() {
 	//tool tip text 
 	//alternative tooltip
 	_acPhiT2 = vtkCaptionActor2D::New();
-	//_tPhi = vtkTextSource::New();
-	//_tPhi->BackingOn();
-	//_tPhi->SetBackgroundColor(0.2, 0.2, 0.2);
-	//_tPhi->SetForegroundColor(1,1,1);
 	
 	_acPhiT2->GetCaptionTextProperty()->SetFontSize(40);
 	_acPhiT2->GetCaptionTextProperty()->SetFontFamilyToArial();
@@ -622,7 +633,10 @@ SenM::Err SenM::initScada() {
 		
 	_nSensors = _source->getNChan(); 
 	Channel* clist = _source->getChanList();
+
+#ifdef _DEBUG
 	_source->dumpChannelsInfo();
+#endif
 
 	Sensor::setCommonParameters(_net3dex, _z_scaling, _xy_unit); 
 	// allocate mem, build sensor geometry
@@ -728,7 +742,7 @@ unsigned WINAPI SenM::_startScadaEl(void* obj) {//scada view
 	s->_vrScada->AddActor(s->_acNetS);
 
 	//debug only, show cell ids
-	if (s->_debug) {
+#ifdef _DEBUG
 		vtkIdFilter* idf = vtkIdFilter::New();
 		idf->SetInput(s->_net3dex);
 		idf->CellIdsOn();
@@ -745,7 +759,7 @@ unsigned WINAPI SenM::_startScadaEl(void* obj) {//scada view
 		celllabels->SetMapper(ldm);
 
 		s->_vrScada->AddActor2D(celllabels);
-	}
+#endif
 
 	
 
@@ -826,14 +840,17 @@ SenM::Err SenM::run() {
 
 SenM::Err SenM::updateSelection(SenMInterationStyle* sis, vtkPropAssembly* ac) {
 	if (sis == _sisPhi) { //called by phi window interator
-		if (_debug) _tprintf(TEXT("update highlight box\n"));
+#ifdef _DEBUG
+		_tprintf(TEXT("update highlight box\n"));
+#endif
 		double* extents;
 		if (extents = ac->GetBounds()) {//get a bound;
 			_sHLBox->SetBounds(extents);
 			_acHLBox->VisibilityOn();
 		}
-
-		if (_debug) _tprintf(TEXT("highlight box on. update banner\n"));
+#ifdef _DEBUG
+		_tprintf(TEXT("highlight box on. update banner\n"));
+#endif
 		int userid = _hashPhi[ac];
 		int nodeid = _net->userId2NodeId(userid);
 		char *nodename = NULL;
@@ -849,7 +866,9 @@ SenM::Err SenM::updateSelection(SenMInterationStyle* sis, vtkPropAssembly* ac) {
 		}
 		sprintf(tpstr, "Variance: %g", _dmodel->getCov(userid, userid));
 		strcat(_tttPhi, tpstr);
-		if (_debug) _tprintf(TEXT("banner text done. show banner\n"));
+#ifdef _DEBUG
+		_tprintf(TEXT("banner text done. show banner\n"));
+#endif
 
 		_acPhiT2->SetCaption(_tttPhi);
 		_acPhiT2->SetAttachmentPoint(
@@ -859,7 +878,7 @@ SenM::Err SenM::updateSelection(SenMInterationStyle* sis, vtkPropAssembly* ac) {
 		_acPhiT2->SetHeight(100);
 		//_acPhiT2->SetPosition2(70,100);
 		_acPhiT2->VisibilityOn();
-		if (_debug) _tprintf(TEXT("banner shown\n"));
+		
 		// control covariance shown
 		if (_lastSel != -1) {
 			_acCov[_lastSel]->VisibilityOff();
@@ -868,7 +887,7 @@ SenM::Err SenM::updateSelection(SenMInterationStyle* sis, vtkPropAssembly* ac) {
 		_acCov[userid]->VisibilityOn();
 		_acVar[userid]->VisibilityOn();
 		_lastSel = userid;
-		if (_debug) _tprintf(TEXT("update visibility\n"));
+		
 
 	} else if (sis == _sisS) {//scada viewer
 		if (_lastSelSensor != NULL) _hashScada[_lastSelSensor]->unselect();
