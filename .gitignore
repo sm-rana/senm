@@ -5,6 +5,7 @@
 libs/*
 *.dat
 .clang_complete
+docs/*
 #
 
 

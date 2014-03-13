@@ -13,29 +13,33 @@ for more details.   */
 
 
 #pragma once
-/* The SenM class Network 
-Singleton, read-only data container of an EPANET network's static data, including
 
-[for hydraulic solver]
-network topology; 
-pipe list with roughness, diameter, and length info; 
-junction list with elevation; 
-pump, reservoir and tank list;
-time and unit settings
-
-[for initialization of demand model]
-demand patterns and baseline demands
-
-*/
 #include <winnt.h>
 #include <windows.h>
 #include <map>
 #include <tchar.h>
 #include "vtkincludes.h"
 
+/** EPANET network infrastructure
+Singleton data container of distribution network infrastructure based on an EPANET inp file. 
+Data managed by the Network class including:
+
+[for hydraulic solver]
+ - network topology; 
+ - pipe list with roughness, diameter, and length info; 
+ - junction list with elevation; 
+ - pump, reservoir and tank list;
+ - time and unit settings
+
+[for initialization of the demand model]
+ - demand patterns 
+ - baseline demands
+
+*/
 class Network {
 public:
-	enum ErrorCode {
+    /** Errors produced when creating the network instance.*/
+	enum ErrorCode  {
 		OK, 
 		NET_NOT_CREATED,
 		CANT_OPEN_FILE,
@@ -79,12 +83,14 @@ public:
 		PUMP_CURVE_INVALID,
 		TANK_LEVEL_INVALID
 	} ;
-
-	  enum FieldType { /* Network variables:                  */
-	//this enum is also used by Channel definition (see datasource.h),  
-	//the database schema (see .sql files), and graphic objects (see sensor.h)
-	//to denote the type of the physical varaible of a Scada system sensor
-		  
+      
+    /** Variable types*/
+	/** EPANET has its own typing system. 
+	This enum is also used by Channel definition (\sa datasource.h),  
+	the database schema (see .sql files), and graphic objects (\sa sensor.h)
+	to specify the type of the physical varaible of a Scada system sensor */
+    enum FieldType { 
+	  
 		  //-----NODE VARIABLES -----//
 		  //------------- sensor type 'L' -------------//
 		  ELEV,         /*   nodal elevation                   */

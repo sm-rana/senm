@@ -11,16 +11,14 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License v2 (http://www.gnu.org/licenses/gpl-2.0.html)
 for more details.   */
 
-
 #pragma once
-
-/* The hydraulic solver class
-Thread-safe EPANET-style hydraulic solver, maintains its own set of intermediate
-variables and result variables
-
-*/
 #include "Network.h"
 
+/** EPANET hydraulic solver 
+Thread-safe EPANET-style hydraulic solver. Instead of using global variables,
+the class maintains its own set of intermediate variables and result variables
+
+*/
 class Solver
 {
 public:  //type definitions
