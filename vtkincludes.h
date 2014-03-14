@@ -1,55 +1,75 @@
-// aggregate vtk header files
+// All vtk header files
 #pragma once
 
-#include "vtkActor.h"
-#include "vtkCamera.h"
-#include "vtkRenderer.h"
-#include "vtkPolyData.h"
-#include "vtkPolyDataMapper.h"
-#include "vtkRenderWindow.h"
-#include "vtkRenderWindowInteractor.h"
-#include "vtkObjectFactory.h"
-#include "vtkProperty.h"
-#include <vtkTextMapper.h>
-#include <vtkTextProperty.h>
-#include <vtkActor2D.h>
-#include <vtkProperty2D.h>
-#include <vtkInteractorStyleTrackballCamera.h>
-#include "vtkRenderer.h"
-#include "vtkCellArray.h"
-#include "vtkFloatArray.h"
-#include "vtkPointData.h"
-#include "vtkPoints.h"
-#include "vtkGlyph3D.h"
-#include "vtkTubeFilter.h"
-#include "vtkTransformFilter.h"
-#include "vtkTransform.h"
-#include "vtkLight.h"
-#include "vtkCellPicker.h"
-#include "vtkCubeSource.h"
-#include "vtkGenericCell.h"
-#include "vtkPropPicker.h"
-#include "vtkPropAssembly.h"
-#include "vtkVectorText.h"
-#include "vtkFollower.h"
-#include "vtkCaptionActor2D.h"
-#include "vtkTextActor.h"
-#include "vtkTextSource.h"
-#include "vtkPoints.h"
-#include "vtkCellData.h"
-#include "vtkPlaneSource.h"
-#include "vtkVertexGlyphFilter.h"
-#include "vtkRendererCollection.h"
-#include "vtkAppendPolyData.h"
-#include "vtkProp3D.h"
-#include "vtkStripper.h"
-#include "vtkTriangleFilter.h"
-#include "vtkCylinderSource.h"
-#include "vtkOpenGLExtensionManager.h"
-#include "vtkgl.h"
+#include <Common/vtkObjectFactory.h>
+#include <Common/vtkFloatArray.h>
+#include <Common/vtkPoints.h>
+#include <Common/vtkProperty2D.h>
+
+#include <Common/vtkTransform.h>
+
+#include <Filtering/vtkPolyData.h>
+#include <Filtering/vtkActor2D.h>
+
+
+#include <Rendering/vtkActor.h>
+#include <Rendering/vtkCamera.h>
+#include <Rendering/vtkRenderer.h>
+#include <Rendering/vtkPolyDataMapper.h>
+
+#include <Rendering/vtkRenderWindow.h>
+#include <Rendering/vtkRenderWindowInteractor.h>
+
+#include <Rendering/vtkProperty.h>
+#include <Rendering/vtkTextProperty.h>
+#include <Rendering/vtkTextMapper.h>
+
+#include <Rendering/vtkInteractorStyleTrackballCamera.h>
+#include <Rendering/vtkRenderer.h>
+
+#include <Filtering/vtkCellArray.h>
+#include <Filtering/vtkPointData.h>
+
+#include <Graphics/vtkGlyph3D.h>
+#include <Graphics/vtkTubeFilter.h>
+#include <Graphics/vtkTransformFilter.h>
+
+#include <Rendering/vtkLight.h>
+
+#include <Rendering/vtkCellPicker.h>
+#include <Graphics/vtkCubeSource.h>
+#include <Filtering/vtkGenericCell.h>
+
+#include <Rendering/vtkPropPicker.h>
+#include <Hybrid/vtkVectorText.h>
+#include <Rendering/vtkFollower.h>
+#include <Hybrid/vtkCaptionActor2D.h>
+
+#include <Rendering/vtkTextActor.h>
+
+#include <Graphics/vtkTextSource.h>
+
+#include <Common/vtkPoints.h>
+
+#include <Filtering/vtkCellData.h>
+
+#include <Graphics/vtkPlaneSource.h>
+#include <Graphics/vtkVertexGlyphFilter.h>
+#include <Rendering/vtkRendererCollection.h>
+#include <Graphics/vtkAppendPolyData.h>
+
+#include <Rendering/vtkProp3D.h>
+#include <Graphics/vtkStripper.h>
+#include <Graphics/vtkTriangleFilter.h>
+#include <Graphics/vtkCylinderSource.h>
+#include <Rendering/vtkOpenGLExtensionManager.h>
+#include <Rendering/vtkgl.h>
+
 //#include "vtkColorSeries.h"
-#include "vtkLookupTable.h"
-#include "vtkLineSource.h"
-#include "vtkIdFilter.h"
-#include "vtkLabeledDataMapper.h"
-#include "vtkCellCenters.h"
+#include <Common/vtkLookupTable.h>
+#include <Graphics/vtkLineSource.h>
+#include <Graphics/vtkIdFilter.h>
+#include <Rendering/vtkLabeledDataMapper.h>
+#include <Graphics/vtkCellCenters.h>
+
+
