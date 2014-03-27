@@ -76,7 +76,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(ProjectDir)\..\VTK\Common;$(ProjectDir)\..\VTK\Hybrid;$(ProjectDir)\..\VTK\Graphics;$(ProjectDir)\..\VTK\Charts;$(ProjectDir)\..\VTK\Geovis;$(ProjectDir)\..\VTK\Rendering;$(ProjectDir)\..\VTK\Filtering;$(ProjectDir)\..\..\DevLibs\VTK5;$(ProjectDir)\..\..\DevLibs\VTK5\IO;$(ProjectDir)\..\..\DevLibs\VTK5\Filters;$(ProjectDir)\..\..\DevLibs\VTK5\Common;$(ProjectDir)\..\..\DevLibs\VTK5\Rendering;$(ProjectDir)rngs;$(ProjectDir)epanet-lt;$(ProjectDir)SFMC</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)\..\VTK;$(ProjectDir)\..\..\DevLibs\VTK5\IO;$(ProjectDir)\..\..\DevLibs\VTK5\Filters;$(ProjectDir)\..\..\DevLibs\VTK5\Common;$(ProjectDir)\..\..\DevLibs\VTK5\Rendering;$(ProjectDir)rngs;$(ProjectDir)epanet-lt;$(ProjectDir)SFMC</AdditionalIncludeDirectories>
       <WholeProgramOptimization>true</WholeProgramOptimization>
     </ClCompile>
     <Link>
@@ -104,6 +104,7 @@
     <ClInclude Include="Solver.h" />
     <ClInclude Include="Varima.h" />
     <ClInclude Include="Viewer.h" />
+    <ClInclude Include="VisNetwork.h" />
     <ClInclude Include="vtkincludes.h" />
   </ItemGroup>
   <ItemGroup>
@@ -123,6 +124,7 @@
     <ClCompile Include="testSenM.cpp" />
     <ClCompile Include="Varima.cpp" />
     <ClCompile Include="Viewer.cpp" />
+    <ClCompile Include="VisNetwork.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

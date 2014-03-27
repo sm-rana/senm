@@ -110,6 +110,7 @@
     </ClInclude>
     <ClInclude Include="clapack.h" />
     <ClInclude Include="f2c.h" />
+    <ClInclude Include="vtkincludes.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="epanet-lt">

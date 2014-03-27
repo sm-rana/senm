@@ -45,14 +45,14 @@ Sensor* Sensor::makeSensor(vtkIdType cellid, Channel* chan)
 			return NULL;
 		}
 
-		switch (chan->mtype) {
-		case Network::HEAD:
+		switch (chan->type) {
+		case Channel::L:
 			return SensorTank::make(cellid, chan);
-		case Network::PRESSURE:
+		case Channel::P:
 			return SensorHead::make(cellid, chan);
-		case Network::FLOW:
+		case Channel::Q:
 			return SensorFlow::make(cellid, chan);
-		case Network::LSTATUS:
+		case Channel::C:
 			return SensorControl::make(cellid, chan);
 		default:
 			return NULL;

@@ -30,6 +30,10 @@
 #include <Filtering/vtkCellArray.h>
 #include <Filtering/vtkPointData.h>
 
+#include <Graphics/vtkTransformPolyDataFilter.h>
+#include <Filtering/vtkPolyDataAlgorithm.h>
+#include <Filtering/vtkPointSetAlgorithm.h>
+
 #include <Graphics/vtkGlyph3D.h>
 #include <Graphics/vtkTubeFilter.h>
 #include <Graphics/vtkTransformFilter.h>

@@ -4,18 +4,7 @@
 #include "types.h"
 #include "funcs.h"
 #include "rvgs.h" //random number generator
-#include "vtkPoints.h"
-#include "vtkVertex.h"
-#include "vtkCellArray.h"
-#include "vtkPolyData.h"
-#include "vtkPolyDataMapper.h"
-#include "vtkDoubleArray.h"
-#include "vtkPointData.h"
-#include "vtkGlyph3D.h"
-#include <vtkTransform.h>
-#include <vtkTransformFilter.h>
-#include <vtkTransformPolyDataFilter.h>
-#include <vtkTubeFilter.h>
+
 #include "DataSource.h"
 #include "ScadaGenerator.h"
 #include <tchar.h>
@@ -507,17 +496,17 @@ ScadaGenerator::Err ScadaGenerator::make(
 				SQL_C_ULONG, SQL_INTEGER, 10, 0, &(it->key), 0, NULL);
 
 				float signal = 0;
-				switch (it->mtype) {
-					case Network::LSTATUS:
+				switch (it->type) {
+				case Channel::C:
 						ENgetlinkvalue(it->mindex, EN_STATUS, &signal);
 						break;
-					case Network::FLOW:
+				case Channel::Q:
 						ENgetlinkvalue(it->mindex, EN_FLOW, &signal);
 						break;
-					case Network::PRESSURE:
+				case Channel::P:
 						ENgetnodevalue(it->mindex, EN_PRESSURE, &signal);
 						break;
-					case Network::HEAD:
+				case Channel::L:
 						ENgetnodevalue(it->mindex, EN_HEAD, &signal);
 						break;
 				}

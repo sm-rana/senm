@@ -17,30 +17,43 @@ for more details.   */
 #include <winnt.h>
 #include <windows.h>
 #include <map>
+#include <list>
 #include <tchar.h>
-#include "vtkincludes.h"
 
-/** EPANET network infrastructure
-Singleton data container of distribution network infrastructure based on an EPANET inp file. 
+/// EPANET network infrastructure
+/**Singleton data container of distribution network infrastructure based on an EPANET inp file. 
 Data managed by the Network class including:
 
 [for hydraulic solver]
- - network topology; 
- - pipe list with roughness, diameter, and length info; 
- - junction list with elevation; 
- - pump, reservoir and tank list;
- - time and unit settings
+- network topology; 
+- pipe list with roughness, diameter, and length info; 
+- junction list with elevation; 
+- pump, reservoir and tank list;
+- time and unit settings
 
 [for initialization of the demand model]
- - demand patterns 
- - baseline demands
+- demand patterns 
+- baseline demands
 
+Any component in the network have 2 different types of IDs. 
+- (EPANET) index:  Index defined by the EPANET engine. Starts from 1. 
+ Node index: 1 <= index <= MaxJuncs: Junctions
+   MaxJuncs < index <= MaxNodes :  tanks(including reservoirs).
+ Link index: 1 <= index <= MaxPipes:  Pipes, 
+   MaxPipes < index <= MaxPumps: pumps, 
+   MaxPumps < index <= MaxLinks: valves
+- (EPANET) ID:  ID string (i.e., name) defined by the EPANET engine. One-on-one map to index. 
+
+The PBV cannot be modeled in SenM.
+The FCV is treated as a TCV, (its setting is the minor head loss coeff.)
 */
 class Network {
-public:
-    /** Errors produced when creating the network instance.*/
+//error and warning system
+public:  
+	/** Errors produced when creating the network instance.*/
 	enum ErrorCode  {
 		OK, 
+		UNLOADED,
 		NET_NOT_CREATED,
 		CANT_OPEN_FILE,
 		PATTERN_ID_EXISTS, 
@@ -48,7 +61,7 @@ public:
 		NODE_ID_EXISTS,
 		LINK_ID_EXISTS,
 		MALLOC_ERROR,
-		NOT_ENOUGH_NODES,
+		NO_JUNCS,
 		NO_TANKS,
 		INPUT_LINE_TOO_LONG,
 		SYNTAX_ERR_OF_SECT_NAME,
@@ -62,6 +75,7 @@ public:
 		SYNTAX_ERR_OF_DEMAND,
 		SYNTAX_ERR_OF_STATUS,
 		SYNTAX_ERR_OF_OPTIONS,
+		SYNTAX_ERR_OF_EMITTERS,
 		SYNTAX_ERR_OF_COORDINATES,
 		ILLEGAL_NUMBER,
 		DEMAND_PATTERN_UNDEFINED,
@@ -77,101 +91,233 @@ public:
 		LINK_UNDEFINED,
 		LINK_IS_A_LOOP,
 		NODE_NOT_LINKED,
-		CV_STATUS_ERROR,
+		SET_CV_STATUS,
 		CURVE_HAS_NO_DATA,
 		CURVE_DATA_NOT_ASC,
 		PUMP_CURVE_INVALID,
-		TANK_LEVEL_INVALID
+		TANK_LEVEL_INVALID,
+		UNKNOWN_UNIT,
 	} ;
-      
-    /** Variable types*/
-	/** EPANET has its own typing system. 
-	This enum is also used by Channel definition (\sa datasource.h),  
-	the database schema (see .sql files), and graphic objects (\sa sensor.h)
-	to specify the type of the physical varaible of a Scada system sensor */
-    enum FieldType { 
-	  
-		  //-----NODE VARIABLES -----//
-		  //------------- sensor type 'L' -------------//
-		  ELEV,         /*   nodal elevation                   */
-						// also for tank levels, sensor type 'L', dim: Length
-		  
-						
-		  DEMAND,       /*   nodal demand flow                 */
-		  HEAD,         /*   nodal hydraulic head              */
-						// total head, dim: Length
-		  
-		  //------------- sensor type 'P' -------------//			
-		  PRESSURE,     /*   nodal pressure                    */
-						//  free head, sensor type 'P', 
-						// dim: Mass/(length*time^2) for hydraulic solver, 
-						//      Length for sensor / scada db
-		 
-		  //-----LINK VARIABLES -----//
-		  LENGTH,       /*   link length                       */
-		  DIAM,         /*   link diameter                     */
 
-		  //------------- sensor type 'Q' -------------//
-		  FLOW,         /*   link flow rate                    */
-						//  pipe flow rate, sensor type 'Q',
-						//  dim: Length^3/time
+	/// Warnings in creating the SenM network
+	enum WarnCode {
+		NONE,
+		PBV_SPECIFIED_IN_INP,
+        TCV_REPLACE_FCV,
+
+	};     
+
+	/// Return the pointer to the text of an error code stored in a member char array
+    LPCTSTR problemText(ErrorCode ec); 
+	/// Return the text of a warning message
+    LPCTSTR problemText(WarnCode ec); 
+
+	/// Report the list of warnings to stdout
+	void reportWarns(); 
+
+protected: 
+	ErrorCode _ecCur; // Current error code.
+	int _lineEc; // Line in which an error is detected
+	TCHAR _strProblem[1024]; // Text of error or warning messages.
+
+	int _lineno;  // current line number
+	typedef std::pair<int, WarnCode> Warn; //a warning instance = line no. + warncode
+	std::list<Warn> _lsWC; // list of warning codes.   
 
 
-		  VELOCITY,     /*   link flow velocity                */
-		  HEADLOSS,     /*   link head loss                    */
-
-		  //------------- sensor type 'C' -------------//
-		  LSTATUS,      /*   link status                       */
-						// on/off status for links, sensor type 'C', no dim
-
-		  SETTING,      /*   pump/valve setting                */
-		  FRICTION,     /*   link friction factor              */
-
-		  //-----OTHER VARIABLES -----//
-		  POWER,        /*   pump power output                 */
-		  TIME,         /*   simulation time                   */
-		  VOLUME,       /*   tank volume                       */
-		  CLOCKTIME,    /*   simulation time of day            */
-		  FILLTIME,     /*   time to fill a tank               */
-		  DRAINTIME};   /*   time to drain a tank              */
-
-	// get the Network instance, if no one exists,  created it.
-	// If a network has been created, return it, in this case, inpfilename can be NULL.
+// Creation and destruction
+public:  
+	///> Factory method. 
+	/** obtain a Network instance based on the EPANET inpfile, 
+	The Network instance is a singleton. If a network has not been created, 
+	create one from the input file. Otherwise, return the existing one. 
+	In the latter case, inpfilename can be NULL.
+	\param [in] inpfilename        Name of the input file. May include path
+	\param [out] net               Pointer to where a pointer to the network is stored
+	\return        Error code typed \sa Network::ErrorCode
+	*/
 	static ErrorCode getNetwork(LPCTSTR inpfilename, Network **net);
 
-	// build a 2d and a 3d vtkNetwork polydata, 
-	// net2d and net3d must have been allocated,
-	// the scalars of the Polydatasets (attribute) at nodes (vertex-typed cells) 
-	// are the baseline water demands
-	ErrorCode get2d3dNet(vtkPolyData* net2d, vtkPolyData* net3d);
+	///> Destroy the network singleton and free memory
+	~Network();
 
-	// lookup the net2d/3d graphic cell id from network index (1-order)
-	// the cellid < number of vertex cells (=MaxNodes) denotes nodes
-	// the cellid > number of vertex cells (=MaxNodes) denotes links
-	vtkIdType index2CellId(int index, FieldType type) ;
+	///> report network information to stdout
+	static void report();
 
-	// look up the graphic cell id from network component id (string)
-	vtkIdType netId2CellId(char* id, FieldType type) ;
+// Publiclly accessible types and constants
+public:
+    /** Variable types*/
+	/** EPANET has its own typing system for the attributes of components. 
+	This enum is also used by Channel definition (\sa datasource.h),  Network class
+	the database schema (see .sql files), and graphic objects (\sa sensor.h)
+	to specify the type of the physical varaible of a Scada system sensor */
+	enum FieldType { 
 
-	// look up the node id (index but 0-order) from a water user id (0-order)
-	// the 0-order node index is equivalent to the graphic cell id
-	int userId2NodeId(vtkIdType userid) {
-		if (userid >=0 && userid < Nusers)
-			return _tabUser[userid];
-		else return -1;
+		//-----NODE VARIABLES -----//
+		///   nodal elevation, 
+		/** The enum is also for monitored tank levels , 
+		and channel type 'L', The dimension of an ELEV variable is Length
+       \sa SensorTank
+		*/
+		ELEV,             
+
+		DEMAND,       ///>   nodal demand flow                 
+		HEAD,         ///> nodal hydraulic (total) head, dim: Length
+
+		///   nodal pressure, 
+		/**  In the Solver the item is for free pressure, and has the dimension
+		of Mass/(length*time^2). 
+		the item is also used for monitored pressure head, 
+		there it has the dimension of Length
+		\sa SensorHead
+		*/
+		PRESSURE,
+
+		//-----LINK VARIABLES -----//
+		LENGTH,       ///>   link length                       
+		DIAM,         ///>   link diameter                     
+
+		/// Pipe/pump/valve flow rate
+		/** In both Solver and SensorFlow the item is for flow rate,
+		with dimension of Length^3/time
+        \sa SensorFlow
+		*/
+		FLOW,         /*   link flow rate                    */
+
+		VELOCITY,     ///>   link flow velocity                
+		HEADLOSS,     ///>   link head loss                    
+
+		///   link status                       
+		/// on/off status for links,  no dimension.
+        ///\sa SensorControl
+		LSTATUS,      
+
+		SETTING,      ///>   pump/valve setting                
+		FRICTION,     ///>   link friction factor              
+
+		//-----OTHER VARIABLES -----//
+		POWER,        ///>   pump power output                 
+		TIME,         ///>   simulation time                  
+		VOLUME,       ///>   tank volume                     
+		CLOCKTIME,    ///>   simulation time of day         
+		FILLTIME,     ///>   time to fill a tank           
+		DRAINTIME,   ///>   time to drain a tank         
+        UNKNOWN,  ///> unkown type of variable
 	};
 
-	// number of nodes
+	/** Head loss formula:                  */
+	enum FormType
+	{HW,           /**>   Hazen-Williams                    */
+	DW,           /**>   Darcy-Weisbach                    */
+	CM};          /**>   Chezy-Manning                     */
+
+	/** Type of node:                       */
+	enum NodeType                  
+	{JUNC,          /**>    junction                         */
+	RESERV,        /**>    reservoir                        */
+	TANK};         /**>    tank                             */
+
+	/** Type of link:                       */
+	enum LinkType                  
+	{CV,           /**>    pipe with check valve            */
+	PIPE,         /**>    regular pipe                     */
+	PUMP,			/**>    pump  */
+	PRV,          /**>    pressure reducing valve          */
+	PSV,          /**>    pressure sustaining valve        */
+	PBV,          /**>    pressure breaker valve           */
+	FCV,          /**>    flow control valve               */
+	TCV,          /**>    throttle control valve           */
+	GPV         /**>    general purpose valve            */
+};
+	/** Link/Tank status:                   */
+	enum StatType                  
+	{CLOSED,       /**>   closed                            */
+	OPEN,         /**>   open                              */
+    ACTIVE
+};
+	/** Type of pump curve:                 */
+	enum PumpType                  
+	{CONST_HP,      /**>    constant horsepower              */
+	POWER_FUNC,    /**>    power function                   */
+	CUSTOM,        /**>    user-defined custom curve        */
+	NOCURVE};
+	///> Maximum characters allowed in one line in the input file name
+	static const int MAX_LINE = 255;
+
+	///> Maximum character allowed in the ID name
+	static const int MAX_ID = 31;
+
+	///> Maximum tokens allowed in a line
+	static const int MAX_TOKS = 40;
+	///> CONSTANTS
+	static const double _PI, _TINY, _BIG;  //init in constructor
+    static const double Viscos;  // kinatic viscosity of water
+
+//Unit system
+public: 
+	///> General units type
+	/** Specifies type of units for variables other than flow rate 
+	and pressure */
+	enum UnitsType {US, SI}; 
+
+	/** Flow units:                         */
+	enum FlowUnitsType             
+	{CFS,          /**>   cubic feet per second             */
+	GPM,          /**>   gallons per minute                */
+	MGD,          /**>   million gallons per day           */
+	IMGD,         /**>   imperial million gal. per day     */
+	AFD,          /**>   acre-feet per day                 */
+	LPS,          /**>   liters per second                 */
+	LPM,          /**>   liters per minute                 */
+	MLD,          /**>   megaliters per day                */
+	CMH,          /**>   cubic meters per hour             */
+	CMD};         /**>   cubic meters per day              */
+
+	/** Pressure units:                     */
+	enum PressUnitsType 
+	{PSI,          /**>   pounds per square inch            */
+	KPA,          /**>   kiloPascals                       */
+	METERS};      /**>   meters                            */
+
+	/** Text representation abbreviation level*/
+	enum AbbrLev
+	{SHORT, FULL};
+
+	/// @{
+	///> Get string representation of a unit
+	/** \param [in] type     Type of the variable
+	\param [in] type     Unit of the variable
+	\param [out] str     String/text representation of the unit.
+	Storage of the char string should be been allocated
+	\return  Errors
+	*/
+	static ErrorCode unitText(FieldType type, UnitsType unit, TCHAR* str, AbbrLev al=SHORT); 
+	static ErrorCode unitText(FieldType type, FlowUnitsType unit, TCHAR* str, AbbrLev al=SHORT); 
+	static ErrorCode unitText(FieldType type, PressUnitsType unit, TCHAR* str, AbbrLev al=SHORT); 
+
+	/// @}
+
+//Utilities
+public:
+
+	///> Get number of nodes
 	int getNnodes() {return MaxNodes;};
+	///> Get number of water users.
 	int getNusers() {return Nusers;};
 
-	// look up the node id (string) from a node index (1-order)
-	void nodeId2NodeName(int nodeid, char** name) {
+	///> Find the EPANET ID string for an EPANET index
+	/** \param [in] nodeid        EPANET index
+	\param [out] name         Pointer to where the EPANET id string is stored
+	\param [in] name_size     Size of the name char array allocated
+	if the index does not exist or name_size>MAX_ID, return empty string
+	*/
+	void nodeId2NodeName(int nodeid, char* name, int name_size) {
 		if (nodeid>0 && nodeid<=MaxNodes)
-			*name = Node[nodeid].ID;
+			strcpy(name, Node[nodeid].ID);
+		else name[0] = '\0'; // empty string
 	};
 
-	// get the max baseline demand
+	///> Get the maxiumu baseline demand
 	double getMaxBaselineDemand() {
 		_maxBD = -DBL_MAX;
 		for (int i=1;i<MaxNodes;++i)
@@ -179,48 +325,16 @@ public:
 				_maxBD = Node[i].D->Base;
 		return _maxBD;
 	}
-	
-	// get the value of baseline demand value at a certain percentile (0 to 1)
+
+	///> Get a percentile of the baseline demand
+	/** \param [in] pc      percentile, must between 0 and 1
+	*/
 	double getBaseDemandPercentile(double pc);
 
-	LPTSTR report() {//report network information in a string
-		if (singleton) {
-			_stprintf(_info, TEXT(
-			"Network Info:\n\tTotal Nodes: %d, Tanks+Reservoirs: %d, Junctions: %d\n\tTotal Links: %d, Pipes: %d, Pumps: %d, Valves: %d\n"),
-			MaxNodes, MaxTanks, MaxJuncs, MaxLinks, MaxPipes, MaxPumps, MaxValves); 
-		} else {
-			_stprintf(_info, TEXT("Network not loaded.\n"));
-		}
-		return _info;
-	};
+
 
 protected:
-	TCHAR _info[512];
-	int* _tabUser; //lookup table, user id to node id (both start with 0)
-	vtkIdType *_tabNodeIndex, *_tabLinkIndex; //look up table for net2d/3d cellid
-	double _maxBD; //max baseline demand
-
-public:
-
-
-	// Free memory
-	~Network();
-
-
-	// Maximum characters allowed in one line in the input file name
-	static const int MAX_LINE = 255;
-
-	// Maximum character allowed in the ID name
-	static const int MAX_ID = 31;
-
-	// Maximum tokens allowed in a line
-	static const int MAX_TOKS = 40;
-
-	// CONSTANTS
-	static const double _PI, _TINY, _BIG;  //init in constructor
-
-	// definitions of data structions for the network
-
+	// definitions of data structures for the network
 	/* Element of list of floats */
 	typedef struct  Floatlist { 
 		double  value;
@@ -267,6 +381,7 @@ public:
 		double  x;				/* x-y coordinates of the node*/
 		double  y;
 		char    coordFlag;		/* the coordinates of the node is specified*/
+		double  Ke;             /* Emitter coeff */
 		Pdemand D;              /* Demand pointer   */
 	}  Snode;
 
@@ -291,17 +406,17 @@ public:
 	{
 		int    Node;     /* Node index of tank       */
 		double A;        /* Tank area                */
-   double Hmin;     /* Minimum water elev       */
-   double Hmax;     /* Maximum water elev       */
-   double H0;       /* Initial water elev       */
-   double Vmin;     /* Minimum volume           */
-   double Vmax;     /* Maximum volume           */
-   double V0;       /* Initial volume           */
-   double Kb;       /* Reaction coeff. (1/days) */
-   double V;        /* Tank volume              */
-   double C;        /* Concentration            */
-   int    Pat;      /* Fixed grade time pattern */
-   int    Vcurve;   /* Vol.- elev. curve index  */
+		double Hmin;     /* Minimum water elev       */
+		double Hmax;     /* Maximum water elev       */
+		double H0;       /* Initial water elev       */
+		double Vmin;     /* Minimum volume           */
+		double Vmax;     /* Maximum volume           */
+		double V0;       /* Initial volume           */
+		double Kb;       /* Reaction coeff. (1/days) */
+		double V;        /* Tank volume              */
+		double C;        /* Concentration            */
+		int    Pat;      /* Fixed grade time pattern */
+		int    Vcurve;   /* Vol.- elev. curve index  */
 
 	}  Stank;
 
@@ -335,7 +450,7 @@ public:
 		int   Link;     /* Link index of valve */
 	}  Svalve;
 
-	
+
 	struct   Sadjlist         /* NODE ADJACENCY LIST ITEM */
 	{
 		int    node;            /* Index of connecting node */
@@ -346,80 +461,51 @@ public:
 	typedef struct Sadjlist *Padjlist; 
 
 	typedef enum _SectNum  
-	
+
 	{TITLE,JUNCTIONS,RESERVOIRS,TANKS,PIPES,PUMPS,
-                  VALVES,CONTROLS,RULES,DEMANDS,SOURCES,EMITTERS,
-                  PATTERNS,CURVES,QUALITY,STATUS,ROUGHNESS,ENERGY,
-                  REACTIONS,MIXING,REPORT,TIMES,OPTIONS,
-                  COORDS,VERTICES,LABELS,BACKDROP,TAGS,END
+	VALVES,CONTROLS,RULES,DEMANDS,SOURCES,EMITTERS,
+	PATTERNS,CURVES,QUALITY,STATUS,ROUGHNESS,ENERGY,
+	REACTIONS,MIXING,REPORT,TIMES,OPTIONS,
+	COORDS,VERTICES,LABELS,BACKDROP,TAGS,END
 
 	} SectNum;
-	static char* SectTxt[];  //defined in network.cpp, any changes made for Section
-	//num much also change sect texts.
 
-	typedef enum _Units {US, SI} UnitsType;
+	//defined in network.cpp, any changes made to _SectNum
+	//must also change SectTxt[].
+	static char* SectTxt[];  
 
-	enum FlowUnitsType             /* Flow units:                         */
-	{CFS,          /*   cubic feet per second             */
-	GPM,          /*   gallons per minute                */
-	MGD,          /*   million gallons per day           */
-	IMGD,         /*   imperial million gal. per day     */
-	AFD,          /*   acre-feet per day                 */
-	LPS,          /*   liters per second                 */
-	LPM,          /*   liters per minute                 */
-	MLD,          /*   megaliters per day                */
-	CMH,          /*   cubic meters per hour             */
-	CMD};         /*   cubic meters per day              */
 
-	enum PressUnitsType            /* Pressure units:                     */
-	{PSI,          /*   pounds per square inch            */
-	KPA,          /*   kiloPascals                       */
-	METERS};      /*   meters                            */
+protected:
+	TCHAR _info[1024]; ///> information string about the loaded network
 
-	enum FormType                  /* Head loss formula:                  */
-	{HW,           /*   Hazen-Williams                    */
-	DW,           /*   Darcy-Weisbach                    */
-	CM};          /*   Chezy-Manning                     */
-
-	enum NodeType                  /* Type of node:                       */
-                {JUNC,          /*    junction                         */
-                 RESERV,        /*    reservoir                        */
-                 TANK};         /*    tank                             */
-
-	enum LinkType                  /* Type of link:                       */
-                 {CV,           /*    pipe with check valve            */
-                  PIPE,         /*    regular pipe                     */
-				  PUMP,			/*    pump  */
-				  VALVE};                                    
-	enum StatType                  /* Link/Tank status:                   */
-                 {CLOSED,       /*   closed                            */
-				  OPEN};         /*   open                              */
-	enum PumpType                  /* Type of pump curve:                 */
-                {CONST_HP,      /*    constant horsepower              */
-                 POWER_FUNC,    /*    power function                   */
-                 CUSTOM,        /*    user-defined custom curve        */
-                 NOCURVE};
+	double _maxBD; //max baseline demand
 
 
 
-private:
+protected:
 	// The only instance allowed for this class
 	static Network* singleton; 
 
-	// Make Solver class a friend class, so all private members are accessible
+	/// Make Solver class a friend class, so all private members are accessible there
+	/// \sa Solver
 	friend class Solver;
+
+    /// Make VisNetwork class a friend class, 
+    /// \sa VisNetwork
+    friend class VisNetwork;
 
 	// Options/configurations
 	UnitsType Unitsflag;
 	FormType	Formflag;
 	FlowUnitsType Flowflag;
 	PressUnitsType Pressflag;
-	
-    
 
-    int DefPat;               /* Default demand pattern index   */
+
+
+	int DefPat;               /* Default demand pattern index   */
 	char DefPatID[MAX_ID];	 /*Default pattern id */
-    int Dmult;             /* Demand multiplier              */ 
+	int Dmult;             /* Demand multiplier              */ 
+	float Qexp;  /* Emitter flow exponent */
 
 	// Component counts
 	int MaxJuncs, MaxTanks, MaxPipes, MaxPumps, MaxValves;
@@ -428,6 +514,7 @@ private:
 	// Component iterators (for input processing only)
 	int Njuncs, Nnodes, Ntanks, Npipes, Npumps, Nvalves, Nlinks;
 	int Nusers;  //water users (base demand >0)
+	int Nemitters;  //count of junctions with emitters
 	int Ntokens;  /* Number of tokens in input line    */
 	STmplist *PrevPat, *PrevCurve;
 
@@ -438,15 +525,25 @@ private:
 	Spump    *Pump;                 /* Pump data                    */
 	Svalve   *Valve;                /* Valve data                   */
 
+	// Quick indexing arrays, the listed items have different treatment
+	// in EPANET and SenM
+	int* tPumpGPV;    // pumps and GPVs
+	int nPumpGPV;  // number of pumps and GPVs
+	int* tCRSV;   // Check valves, PRV, PSV
+	int nCRSV;     // number of check valves, PRV, PSV.
+	int* tTFV;  // throttle control valves, flow control vavles
+	int nTFV;   //number of TCV, FCV
+
 	Padjlist *Adjlist;              /* Node adjacency lists         */	
 	int *Degree;    /* Number of links adjacent to each node, used by the solver  */
 	int Ncoeffs;               /* Number of non-0 matrix coeffs*/
 	int     *Ndx;        /* Index of link's coeff. in Aij       */
-	int     *Order;      /* Node-to-row of A                    */
-	int 	*Row;        /* Row-to-node of A                    */
-	
-	/** The following arrays store the positions of the non-zero coeffs.    
-	** of the lower triangular portion of A whose values are stored in Aij:
+	int     *Order;      /* which node corresponds to the [i]th row in A?           */
+	int 	*Row;        /* which row in A corresponds to the [i]th node?           */
+
+	/** Sparse matrix representation 
+	The following arrays store the positions of the non-zero coeffs.    
+	of the lower triangular portion of A whose values are stored in Aij:
 	*/
 	int      *XLNZ,       /* Start position of each column in NZSUB  */
 		*NZSUB,      /* Row index of each coeff. in each column */
@@ -462,9 +559,9 @@ private:
 	STmplist *Patlist;		//temporary list
 	Spattern *Pattern;
 
-	
+
 	// Maps for id-index lookup (nodes and links), original EPANET hashtable is deprecated
-	
+
 	struct cmp_str 	{
 		bool operator()(char const *a, char const *b)
 		{
@@ -475,66 +572,67 @@ private:
 	typedef std::pair<char*, int> HTPair;
 	typedef std::map<char*, int>::iterator HTIt;
 
-private:
-	// default constructor, not accessible publicly
+protected:
+	// disable default constructor
 	Network(); 
 	//members
 	TCHAR _inpfilename[MAX_PATH];
 
 	// Load data from INP file
-	ErrorCode _loadInp(FILE*);
+	ErrorCode loadInp(FILE*);
 
 	// process a line and store characters to Tok[]
 	ErrorCode coordata();
 	ErrorCode juncdata();
 	ErrorCode tankdata();
-		ErrorCode inittanks();
+	ErrorCode emitterdata();
+	ErrorCode inittanks();
 
 	ErrorCode pipedata();
 
 	ErrorCode pumpdata();  
-		ErrorCode getpumpcurve(int, double*);
-		int powercurve(double h0, double h1, double h2, double q1, double q2, 
-			double *a, double* b, double* c);
-		ErrorCode getpumpparams();
+	ErrorCode getpumpcurve(int, double*);
+	int powercurve(double h0, double h1, double h2, double q1, double q2, 
+		double *a, double* b, double* c);
+	ErrorCode getpumpparams();
 
 	ErrorCode valvedata();
 	ErrorCode unlinked();
 
 	// hydraulic solver preparation
 	ErrorCode buildlists(int); // build adjacent lists
-		int paralink(int node1, int node2, int link); //parallel link check
-		void xparalinks();   // remove parallel links
-		void countdegree();
-		ErrorCode reordernodes();
-		int mindegree(int, int);
-		int growlist(int);
-		int newlink(Padjlist);
-		int linked(int, int);
-		int addlink(int, int, int);
+	int paralink(int node1, int node2, int link); //parallel link check
+	void xparalinks();   // remove parallel links
+	void countdegree();
+	ErrorCode reordernodes();
+	int mindegree(int, int);
+	int growlist(int);
+	int newlink(Padjlist);
+	int linked(int, int);
+	int addlink(int, int, int);
 	ErrorCode storesparse(int);
 	void freelists();
 	ErrorCode ordersparse(int);
-		void transpose(int n, int* il, int *jl, int *xl, 
-			int* ilt, int* jlt, int* xlt, int* nzt);
+	void transpose(int n, int* il, int *jl, int *xl, 
+		int* ilt, int* jlt, int* xlt, int* nzt);
 
 	ErrorCode patterndata();  ErrorCode getpatterns();
 	ErrorCode curvedata();  ErrorCode getcurves();
 	ErrorCode demanddata();
 	ErrorCode statusdata();
-		void changestatus(int index, char status, double setting);
+	void changestatus(int index, char status, double setting);
 	ErrorCode optiondata();
-		ErrorCode optionchoice(int);
+	ErrorCode optionchoice(int);
 
-	// unit conversion
+	// unit conversion related
 	double Ucf[18]; //see FieldType
 	void initunits();
 	void convertunits();
 
-	// compute link major headloss
+	// compute link's major headloss
 	void resistence(int);
 	double Hexp; /* Exponent in headloss formula */
-	
+
 
 	// Create a new pattern
 	ErrorCode addpattern(char*);
@@ -558,7 +656,7 @@ private:
 	int  match(char *str, char *substr);
 
 	//scans string for tokens, saving pointers to them
-    // in module global variable Tok[]
+	// in module global variable Tok[]
 	int  gettokens(char*);
 	char* Tok[MAX_TOKS];
 

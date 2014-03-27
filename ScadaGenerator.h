@@ -15,10 +15,7 @@ for more details.   */
 #include <process.h>
 #include "DataSource.h"
 #include "Varima.h"
-#include "vtkPolyDataMapper.h"
-#include "vtkCylinderSource.h"
-#include "vtkTransform.h"
-#include "vtkTransformFilter.h"
+#include "vtkIncludes.h"
 #include <tchar.h>
 
 class ScadaGenerator: public Provider {

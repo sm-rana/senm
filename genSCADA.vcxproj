@@ -73,7 +73,6 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>true</LinkIncremental>
-    <OutDir>..\..\SenM_remote_test</OutDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -129,7 +128,7 @@
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <WarningLevel>Level3</WarningLevel>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
-      <AdditionalIncludeDirectories>C:\Users\owner\Documents\GitHub\vtk\VTK\Graphics;C:\Users\owner\Documents\GitHub\vtk\VTK\Hybrid;C:\Users\owner\Documents\GitHub\vtk\VTK\Geovis;C:\Users\owner\Documents\GitHub\vtk\build-jc5;C:\Users\owner\Documents\GitHub\vtk\VTK\Common;C:\Users\owner\Documents\GitHub\vtk\VTK\Rendering;C:\Users\owner\Documents\GitHub\vtk\VTK\Filtering;C:\Users\owner\Documents\GitHub\vtk\build-jc5\IO;C:\Users\owner\Documents\GitHub\vtk\build-jc5\Filters;C:\Users\owner\Documents\GitHub\vtk\build-jc5\Common;C:\Users\owner\Documents\GitHub\vtk\build-jc5\Rendering;$(ProjectDir)rngs;$(ProjectDir)epanet-lt;$(ProjectDir)SFMC</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\wqj\Documents\GitHub\VTK;C:\Users\wqj\Documents\DevLibs\VTK5;$(ProjectDir)rngs;$(ProjectDir)epanet-lt;$(ProjectDir)SFMC</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -192,6 +191,7 @@
     <ClInclude Include="SFMC\SFMT-sse2.h" />
     <ClInclude Include="SFMC\SFMT.h" />
     <ClInclude Include="Varima.h" />
+    <ClInclude Include="vtkincludes.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

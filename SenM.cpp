@@ -644,7 +644,7 @@ SenM::Err SenM::initScada() {
 	_aSensors = new vtkPropAssembly*[_nSensors];
 	for (int i=0; i<_nSensors; ++i) {
 		_sensors[i] = Sensor::makeSensor(
-			_net->netId2CellId(clist->name, clist->mtype), clist);
+			_net->netId2CellId(clist->name, clist->type), clist);
 		clist = clist->next;
 		if (_sensors[i] == NULL) {
 			_tprintf(TEXT("\tChannel No. %d can't be shown...\n"), i);
@@ -811,7 +811,7 @@ SenM::Err SenM::run() {
 		double* snapshot = new double[nChan];
 
 		for (;; _senm_time += dts) { // main scada loading cycle
-			_source->getASnapshot(_senm_time, snapshot);
+			_source->fillASnapshot(_senm_time, snapshot);
 			for (int i=0; i<nChan; ++i) {
 				if (_sensors[i] != NULL) {
 					EnterCriticalSection(&_access_sensor);
@@ -853,9 +853,9 @@ SenM::Err SenM::updateSelection(SenMInterationStyle* sis, vtkPropAssembly* ac) {
 #endif
 		int userid = _hashPhi[ac];
 		int nodeid = _net->userId2NodeId(userid);
-		char *nodename = NULL;
+		char nodename[Network::MAX_ID];
 		char tpstr[512];
-		_net->nodeId2NodeName(nodeid+1, &nodename);
+		_net->nodeId2NodeName(nodeid+1, nodename, Network::MAX_ID);
 		sprintf(_tttPhi, 
 			"EPANET Node(%d): %s\nWater User ID: %d\nGraphics ID: %d\n",
 			nodeid+1, nodename, userid, nodeid);

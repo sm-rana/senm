@@ -57,50 +57,44 @@ public:
 	/** add a data provider and all its channels */
 	Err addProvider(Provider*);
 
-	// @{
 
 	/**get number of channels*/
 	unsigned getNChan() {return n_chan;};
 
 	/** Get a channel with given channel id, if not found return NULL*/
     /** \return     a pointer to a channel, NULL if it does not exist*/
-	Channel* getChan(int id);
+	Channel * getChan(int id);
 
 	/** Get the list of channels */
 	/** \return    channel list */
-	Channel* getChanList() {return channel_list;};
+	Channel * getChanList() {return channel_list;};
 
-    /** Get consecutive n snapshots from the channels.
-	The method gets n consecutive snapshots at and before a specified time. 
+    /// Get consecutive n snapshots from the channels into pre-allocated arrays.
+	/**The method gets n consecutive snapshots at and before a specified time. 
     Snapshots are taken at t_in, t_in-dt, t_in-2*dt, ...
 	The pointer snapshots should have n_chan*(n+1) doubles allocated already.
       \param [in]  t_in    Time stamp on which the data query is based	
       \param [in]  n       Number of snapshots needed - 1
       \param [out]  snapshots   pointer to a double array
 	*/
-	Err getSnapshots(Tstamp t_in, unsigned n, double* snapshots);
+	Err fillSnapshots(Tstamp t_in, unsigned n, double* snapshots);
 
-	/** Get a single data snapshot (wrapper) */
-    /** Get the most recent snapshot as of ct
+	/// Get a single snapshot of data into pre-allocated arrays.
+	 /** Get the most recent snapshot as of ct
       \param [in] ct      CTime struct representing time in need.
       \param [out] snapshot   Pointer to an array, should have been allocated with n_chan doubles
       */
-	Err getASnapshot(CTime ct, double* snapshot){
-		Tstamp tp;
-		tp.year = ct.GetYear();
-		tp.month = ct.GetMonth();
-		tp.day = ct.GetDay();
-		tp.hour = ct.GetHour();
-		tp.minute = ct.GetMinute();
-		tp.second = ct.GetSecond();
-		tp.fraction = 0;
-		return getSnapshots(tp, 0, snapshot);
-	};
+	Err fillASnapshot(CTime ct, double* snapshot);
+
+	/// update databuffer with the snapshot at a given time.
+	Err updateBufSnapshot(CTime ct);
+
+	/// Get a pointer to the buffer of data snapshot
+	Err getBufSnapshot(double ** pss) {*pss = _datBuf; return OK;};
 
 	/** Print information about channels and providers*/
 	void dumpChannelsInfo();
 
-    // @}
 
 
 	DataSource();
@@ -113,6 +107,7 @@ protected:
 	int n_prov;  ///> number of data providers 
     int n_chan;  ///> number of data channels
 	unsigned	dt;  ///> time interval between snapshots, in seconds
+	double* _datBuf;  ///> data buffer - most recent snapshot
 
 };
 
@@ -219,22 +214,57 @@ protected:
  and deleted by DataSource::~Datasource()
  */
 struct Channel
-{
+{	
 	int			key;		///> channel key (e.g., database primary key)
+
+	/// Channel Types
+	enum Type {
+		NONE = 0, ///>No channel
+		L = 0x1, ///> Water level
+		F = 0x2, ///> Pump flow rate
+		V = 0x4, ///> Minor headloos coefficient for TCV, FCV
+		B = 0x8, ///> Discharge-side pressure
+		A = 0x10, ///> Suction-side pressure
+		Q = 0x20, ///> Pipe flow rate 
+		C = 0x40, ///> Pipe/valve on/off
+		P = 0x80, ///> Nodal pressure
+		D = 0x100, ///> Real-time demad (flow meter)
+
+	};
+
+	Type    type;  ///> type of the channel
 	char		name[MAX_NET_ID_LEN];  ///>  name of the component, consistent with network component id string
+
 	Provider*	provider;  ///> data provider
-	Network::FieldType  mtype;  ///>  the type of measurement in a hydraulic model
 	int			mindex;  ///> index in the hydraulic network
-	DataSource::UnitsType  unit; ///> unit of measurement
+
+    ///>  the type of measurement in a hydraulic model
+	Network::FieldType  mtype() {
+		switch (type) {
+		case L: return Network::HEAD;  
+		case V: return Network::SETTING;
+		case B: case A: case P: return Network::PRESSURE;
+		case C: return Network::LSTATUS;
+		case F: case Q: case D: return Network::FLOW;
+		default:
+			return Network::UNKNOWN;
+		}
+	}
+
+	DataSource::UnitsType  unit; ///> unit of measurement, needs work here
+    //right now assume channel unit is consistent with network unit
+
+
 	double		rse;  ///>  relative standard error,=std. dev/mean,(assuming normal)
 	double		lower_lim;  ///> lower limits of the possible measurements
 	double		upper_lim;  ///> upper limits
-	double		err_data;   ///>  if the the sensor has anormaly, this value shows up.
+	double		error_default;   ///>  if the the sensor has anormaly, this value shows up.
 
 	enum Status {OK, DATA_ERR, DATA_OUTBOUND};
 	Status		status;  ///>  working status of this channel
 
 	Channel*	next;   ///> next channel in a list
 };
+
 
 
