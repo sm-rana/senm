@@ -89,7 +89,7 @@ Varima::Err Varima::setPara(
 		if (info) return COV_NOT_POSITIVE_DEF;
 	}
 
-	
+
 
 	return OK;
 
@@ -120,7 +120,7 @@ Varima::Err Varima::initStateG(Rvgs* rg_in, double** z0, int size) {
 	while (inner->s!=1) inner=inner->in;
 	inner->rg = rg_in;
 
-	if ( z0 == NULL) return OK; // don't init
+	//if ( z0 == NULL) return OK; // don't init
 
 	int j; //dimension iterator
 	int k; //time iterator
@@ -138,36 +138,36 @@ Varima::Err Varima::initStateG(Rvgs* rg_in, double** z0, int size) {
 	return OK;
 }
 
-Varima::Err Varima::initStateLogG(Rvgs* rg_in, double** z0, int size) {
-	// z0 is a pointer to rows
-	if (rg_in == NULL) return INVALID_PTR;
+//Varima::Err Varima::initStateLogG(Rvgs* rg_in, double** z0, int size) {
+//	// z0 is a pointer to rows
+//	if (rg_in == NULL) return INVALID_PTR;
 
-	// set random number generator for the inner most model
-	Varima* inner = this;
-	while (inner->s!=1) inner=inner->in;
-	inner->rg = rg_in;
+//	// set random number generator for the inner most model
+//	Varima* inner = this;
+//	while (inner->s!=1) inner=inner->in;
+//	inner->rg = rg_in;
 
-	if ( z0 == NULL) return OK; // don't init
+//	//if ( z0 == NULL) return OK; // don't init
 
-	int j; //dimension iterator
-	int k; //time iterator
-	int kc;  //column iterator
+//	int j; //dimension iterator
+//	int k; //time iterator
+//	int kc;  //column iterator
 
-	if (z0) // has inital matrix
-		for (j=0; j<n; ++j)  // fill initial value with very last values
-			for (k=ncmz-1, kc=size-1; k>=0 && kc>=0; --k, --kc) {
-				if (z0[j][kc] <= 0) 
-					mz[j*ncmz + k] = LOG_OF_ZERO;
-				else
-					mz[j*ncmz + k] = log(z0[j][kc]);
-			}
+//	if (z0) // has inital matrix
+//		for (j=0; j<n; ++j)  // fill initial value with very last values
+//			for (k=ncmz-1, kc=size-1; k>=0 && kc>=0; --k, --kc) {
+//				if (z0[j][kc] <= 0) 
+//					mz[j*ncmz + k] = LOG_OF_ZERO;
+//				else
+//					mz[j*ncmz + k] = log(z0[j][kc]);
+//			};
 
 
-			for (m=0; m < INIT_CYCLES * (p+1) * (q+1) * (d+1);) 
-				if (generate(NULL)) return GEN_ERROR;
+//    for (m=0; m < INIT_CYCLES * (p+1) * (q+1) * (d+1);) 
+//        if (generate(NULL)) return GEN_ERROR;
 
-			return OK;
-}
+//    return OK;
+//}
 
 
 Varima::Err  Varima::generate(double* z_out) {
@@ -187,12 +187,13 @@ Varima::Err  Varima::generate(double* z_out) {
 		for (j=0; j<n; ++j) tpa[j]=rg->Normal(0,1); //get iid ran.vec
 		doublereal alpha(1), beta(0); 
 		integer incx=1;
+		// use cholesky lower-triangular matrix to generate correlated vector white noise
 		dgemv_("N", (integer*)&n, (integer*)&n, &alpha, lcov, (integer*)&n,
 			tpa, &incx, &beta, ma, (integer*)&ncma); // L matrix * vector
-	} else {
+	} else {// use embeded model
 		if (in->generate(NULL)) return GEN_ERROR;
 		for (j=0; j<n; ++j) 
-			ma[j*ncma + pma]=(in->mz)[j*in->ncmz + in->pmz]; // use embeded model
+			ma[j*ncma + pma]=(in->mz)[j*in->ncmz + in->pmz]; 
 	}
 
 
@@ -215,7 +216,7 @@ Varima::Err  Varima::generate(double* z_out) {
 	for (j=0; j<n; ++j) {
 		double tpz = mw[j*ncmw + pmw];
 		for (k=1; k<=d; ++k)  // differencing operator
-				tpz -= mz[j*ncmz + (pmz - s*k + ncmz)%ncmz] * dwts[k*s];
+			tpz -= mz[j*ncmz + (pmz - s*k + ncmz)%ncmz] * dwts[k*s];
 
 		mz[j*ncmz + pmz] = tpz;
 		if (z_out != NULL) z_out[j] = tpz + mean[j];
@@ -230,14 +231,15 @@ Varima::Err Varima::generateExp(double* z_out) {
 
 	if (z_out == NULL) return INVALID_PTR;
 	for (int j=0; j<n; ++j)
-		
+
 		z_out[j] = exp(mz[j*ncmz + pmz]); 
-		
+
 	return OK;
 }
 
 
 unsigned Varima::nchoosek(unsigned n, unsigned k) {
+	// does not work for very large n and k
 
 	unsigned long long res = 1;
 	unsigned long long tp = 1;

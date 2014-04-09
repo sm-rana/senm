@@ -55,7 +55,6 @@
       <Filter>rngs</Filter>
     </ClCompile>
     <ClCompile Include="Varima.cpp" />
-    <ClCompile Include="testVarima.cpp" />
     <ClCompile Include="testSG.cpp" />
     <ClCompile Include="testVisi.cpp" />
   </ItemGroup>

@@ -33,13 +33,13 @@ const double Solver::AC = -5.14214965799e-03; /* AA*AB */
 
 Solver::Solver()  {//setdefaults() in input1.c 
 	Htol = 0.005;   /* Default head tolerance         */
+    Qtol = 1e-4;
 	Hacc      = 0.001;            /* Default hydraulic accuracy     */
 	MaxIter   = 200;         /* Default max. hydraulic trials  */
 	ExtraIter = -1;              /* Stop if network unbalanced     */
 	RQtol     = 1E-7;           /* Default hydraulics parameters  */
-	CheckFreq = 2;
-	MaxCheck  = 10;
-	DampLimit = 0; 
+//	DampLimit = 0; 
+    
 }
 
 Solver::~Solver() {
@@ -89,7 +89,7 @@ Solver::ECode Solver::createSolver(
 			return errorC.ec;
 		} 
 
-		int nChan = ds->getNChan();
+		int nChan = ds->n_chan;
 
 		if (nChan == 0) { //no channels
 			warnList.push_back(Warn(NO_CHANNELS, Network::UNKNOWN, 0));
@@ -102,7 +102,7 @@ Solver::ECode Solver::createSolver(
 		Channel::Type *tabCAT = new Channel::Type[M+N+1];
 		for (int iTab = 0; iTab<M+N+1; ++iTab) tabCAT[iTab]=Channel::NONE;
 
-		Channel * lsChan = ds->getChanList();
+		Channel * lsChan = ds->lsChan;
 		int nCd = 0; // number of channel [D]
 
 		for (Channel* iChan = lsChan; iChan; iChan = iChan->next) {
@@ -260,7 +260,7 @@ Solver::ECode Solver::createSolver(
 
 		prec->Q    = (double *) calloc(m, sizeof(double));
 		prec->K    = (double *) calloc(m, sizeof(double));
-		prec->S    = (char  *) calloc(m, sizeof(char));
+		prec->S    = (LinkStatus  *) calloc(m, sizeof(LinkStatus));
 
 		prec->B = (double*) calloc(n, sizeof(double));
 
@@ -284,9 +284,19 @@ Solver::ECode Solver::createSolver(
 				++iXd;
 			}
 		}			
+        // load link availablity
+		for (int iLink = 1; iLink <= net->MaxLinks; ++ iLink) {
+			if (net->Link[iLink].Stat == Network::OPEN) {
+                //enable
+                prec->S[iLink] = FULL_OPEN;
+			} else {
+                prec->S[iLink] = DISABLED; //disable
+			}
+		}
+
 
 		// get pointer to snapshot data
-		ds->getBufSnapshot(&prec->_ss);
+		prec->_ss = ds->_datBuf;
 
 		/* Set exponent in head loss equation and adjust flow-resistance tolerance.*/
 		if (net->Formflag == Network::HW) prec->Hexp = 1.852;
@@ -312,6 +322,7 @@ void Solver::fillEWinfo(Error err, TCHAR* txt) {
 		"discharge-side pressure or pressure head."  ), 
 		TEXT("A TCV or TFV does not have a [V] channel showing"
 		"minor headloss setting.")
+        
 	};
 
 	if (txt == NULL) return;
@@ -329,15 +340,24 @@ void Solver::fillEWinfo(Error err, TCHAR* txt) {
 
 }
 
-void Solver::reportCreation() {
+void Solver::reportCreationError() {
 	TCHAR tptxt[512];
 	if (errorC.ec != OK) {
 		fillEWinfo(errorC, tptxt);
 		_ftprintf(stderr, TEXT("%s\n"), tptxt);
 		return;
 	}
+}
 
-	for (std::list<Warn>::iterator iWarn; iWarn != _warnListC.end(); ++ iWarn) {
+
+void Solver::report() {
+
+	TCHAR tptxt[512];
+    for (std::list<Warn>::iterator iWarn; iWarn != _warnListC.end(); ++ iWarn) {
+		fillEWinfo(*iWarn, tptxt);
+		_ftprintf(stderr, TEXT("%s\n"), tptxt);
+	}
+	for (std::list<Warn>::iterator iWarn; iWarn != _warnListR.end(); ++ iWarn) {
 		fillEWinfo(*iWarn, tptxt);
 		_ftprintf(stderr, TEXT("%s\n"), tptxt);
 	}
@@ -356,6 +376,11 @@ void Solver::fillEWinfo(Warn warn, TCHAR* txt) {
 		"solver, will use baseline demand instead."),
 		TEXT("Too many demand realizations provided to the solver. only the "
 		"first nxd of them will be used.")
+        TEXT("Channel B in the node conflicts with an emitter setting."),
+        TEXT("Hydraulic equation can not be solved due to ill-conditions."),
+        TEXT("PRV/PSV causing ill conditionality in the hydraulic equations."),
+        TEXT("Maximum number of iterations reached. cannot find a solution."),
+        TEXT("Potential CV/PSV/PRV periodic problem")
 	};
 
 	if (txt == NULL) return;
@@ -390,7 +415,7 @@ void Solver::setLFBVCD() {
 			// cut the link, 
 			// add inflow to discharge side
 			// add outflow to suction side
-			S[iCh->mindex] = Network::CLOSED;
+			S[iCh->mindex] = DISABLED; //disable
 			int N1 = _net->Link[iCh->mindex].N1;
 			int N2 = _net->Link[iCh->mindex].N2;
 			D[N1] += _ss[iiCh];
@@ -402,19 +427,19 @@ void Solver::setLFBVCD() {
 			break;
 		case Channel::V:
 			if (_ss[iiCh] == -1) { //FCV or TCV closed
-				S[iCh->mindex] = Network::CLOSED;
-				K[iCh->mindex] == Network::_TINY;
+				S[iCh->mindex] = DISABLED;
+				K[iCh->mindex] == CBIG;
 			} else { //open, set minor head loss coeff
-				S[iCh->mindex] = Network::ACTIVE;
+				S[iCh->mindex] = PARTIAL;
 				K[iCh->mindex] = _ss[iiCh];
 			}
 			break;
 		case Channel::C:
 			//set link status
 			if (_ss[iiCh] == 1) { // open
-				S[iCh->mindex] = Network::OPEN;
+				S[iCh->mindex] = DISABLED;
 			} else {
-				S[iCh->mindex] = Network::CLOSED;
+				S[iCh->mindex] = FULL_OPEN;
 			}
 			break;
 		case Channel::D:
@@ -426,7 +451,7 @@ void Solver::setLFBVCD() {
 }
 
 int Solver::run(double *xd, int nXd) {
-	// clean warning list
+	// clean run-time warning list
 	_warnListR.clear();
 
 	// set channel data for Channels [L][F][B][V][C][D]
@@ -453,18 +478,17 @@ int Solver::run(double *xd, int nXd) {
 	// init link flows
 	for (int i=1; i<M; ++i) {
 		/* Initialize status and setting */
-		S[i] = _net->Link[i].Stat;
 		K[i] = _net->Link[i].Kc;
 
 		/* Start active control valves in ACTIVE position,
 		unless pressure setting not specified*/                     
 		if ( (_net->Link[i].Type == Network::PRV || 
 			_net->Link[i].Type == Network::PSV )
-			&& (_net->Link[i].Kc != 0) ) S[i] = Network::ACTIVE;                                     
+			&& (_net->Link[i].Kc != 0) ) S[i] = PARTIAL;                                     
 
 		/* Initialize flows if necessary */
-		if (S[i] == Network::CLOSED) Q[i] = Network::_TINY;
-		else if (abs(Q[i]) <= Network::_TINY )
+		if (S[i] == CLOSED || S[i] == DISABLED) Q[i] = CSMALL;
+		else if (abs(Q[i]) <= CSMALL)
 			// init to 1 fps for regular pipes
 			Q[i] = Network::_PI*pow(_net->Link[i].Diam, 2)/4.0;
 	}
@@ -474,17 +498,391 @@ int Solver::run(double *xd, int nXd) {
 		if (_net->Node[i].Ke > 0.0) E[i] = 1.0;
 
 	// run hydraulic simulation, netsolve() in hydraul.c
-	int maxtrials = MaxIter + (ExtraIter>0 ? ExtraIter: 0);
-	for (int iter = 1; iter <= maxtrials; ++ iter) {
-		newcoeffs();
-		linsolve(_net->Njuncs, Aii, Aij, F);
+    int probNode; // link causing ill-conditionality
+    double newerr;  // error between subsequent iterations
+    int statChange;  // valve change flag
+    int iter = 0;
 
+    // iterative solver
+    do {
+        
+        newcoeffs(); //update P, Y, A, F for each component
 
-	}
+		probNode = linsolve(_net->Njuncs, Aii, Aij, F); // sparse linear solver
 
+        if (probNode>0) { // check of ill-conditionality
+			_warnListR.push_back(
+				Warn(EQN_ILL_COND, Network::PRESSURE, probNode));
+
+            if (badvalve(_net->Order[probNode])) { // a valve caused it
+                _warnListR.push_back(
+					Warn(VALVE_CAUSE_ILL_COND, Network::SETTING, probNode));
+                continue;
+			} else {// trouble in lin solver 
+               break;
+			}
+		}
+
+        // update heads and flows
+		for (int i = 1; i<_net->Njuncs; ++i) H[i] = F[_net->Row[i]];
+        newerr = newflows();
+
+        // update cv, prv, psv status
+        statChange = valvestatus() && linkstatus(); 
+
+        ++iter;
+        if (iter > MaxIter ) {
+			_warnListR.push_back( Warn(MAX_ITER_REACHED));
+            if (statChange) 
+				_warnListR.push_back( Warn(CV_PSV_PRV_PROB));
+            break;
+		}
+	} while (newerr < Hacc);
+
+   /* Add any emitter flows to junction demands */
+   for (int i=1; i<=_net->Njuncs; i++) D[i] += E[i];
+
+   return _warnListR.size();
 
 }
+int  Solver::linkstatus()
+/*
+**--------------------------------------------------------------
+**  Input:   none                                                
+**  Output:  returns 1 if any link changes status, 0 otherwise   
+**  Purpose: determines new status for CVs                  
+**--------------------------------------------------------------
+*/
+{
+   int   change = FALSE,             /* Status change flag      */
+         k,                          /* Link index              */
+         n1,                         /* Start node index        */
+         n2;                         /* End node index          */
+   double dh;                        /* Head difference         */
+   LinkStatus  status;                     /* Current status          */
 
+   /* Examine each CV */
+   for (k=1; k<=_net->Npipes; k++)
+   {
+      n1 = _net->Link[k].N1;
+      n2 = _net->Link[k].N2;
+      dh = H[n1] - H[n2];
+
+      /* Re-open temporarily closed links (status = XHEAD or TEMPCLOSED) */
+      status = S[k];
+      if (status != DISABLED) S[k] = FULL_OPEN;
+
+      /* Check for status changes in CVs and pumps */
+      if (_net->Link[k].Type == Network::CV) S[k] = cvstatus(S[k],dh,Q[k]);
+
+      if (status != S[k])
+      {
+         change = TRUE;
+      }
+   }
+   return(change);
+}                        /* End of linkstatus */
+
+
+Solver::LinkStatus  Solver::cvstatus(Solver::LinkStatus s, double dh, double q)
+/*
+**--------------------------------------------------
+**  Input:   s  = current status
+**           dh = headloss
+**           q  = flow
+**  Output:  returns new link status                 
+**  Purpose: updates status of a check valve.        
+**--------------------------------------------------
+*/
+{
+   /* Prevent reverse flow through CVs */
+   if (abs(dh) > Htol)
+   {
+      if (dh < -Htol)     return(CLOSED);
+      else if (q < -Qtol) return(CLOSED);
+      else                return(FULL_OPEN);
+   }
+   else
+   {
+      if (q < -Qtol) return(CLOSED);
+      else           return(s);
+   }
+}
+
+
+
+int  Solver::valvestatus()
+/*
+**-----------------------------------------------------------------
+**  Input:   none                                                
+**  Output:  returns 1 if any pressure or flow control valve                   //(2.00.11 - LR)
+**           changes status, 0 otherwise                                       //(2.00.11 - LR) 
+**  Purpose: updates status for PRVs & PSVs whose status                       //(2.00.12 - LR)
+**           is not fixed to OPEN/CLOSED
+**-----------------------------------------------------------------
+*/
+{
+   int   change = FALSE,            /* Status change flag      */
+         i,k,                       /* Valve & link indexes    */
+         n1,n2;                     /* Start & end nodes       */
+      LinkStatus s;                         /* Valve status settings   */
+   double hset;                     /* Valve head setting      */
+
+   for (i=1; i<=_net->Nvalves; i++)                   /* Examine each valve   */
+   {
+      k = _net->Valve[i].Link;                        /* Link index of valve  */
+	  if (S[k] == DISABLED) continue;            /* Valve status fixed   */
+      n1 = _net->Link[k].N1;                          /* Start & end nodes    */
+      n2 = _net->Link[k].N2;
+      s  = S[k];                                /* Save current status  */
+
+      switch (_net->Link[k].Type)                     /* Evaluate new status: */
+      {
+	  case Network::PRV:  hset = _net->Node[n2].El + K[k];
+                    S[k] = prvstatus(k,s,hset,H[n1],H[n2]);
+                    break;
+         case Network::PSV:  hset = _net->Node[n1].El + K[k];
+                    S[k] = psvstatus(k,s,hset,H[n1],H[n2]);
+                    break;
+
+         default:   continue;
+      }
+      /* Check for status change */
+      if (s != S[k])
+      {
+         change = TRUE;
+      }
+   }
+   return(change);
+}                       /* End of valvestatus() */
+
+Solver::LinkStatus  Solver::prvstatus(int k, LinkStatus  s, double hset, double h1, double h2)
+/*
+**-----------------------------------------------------------
+**  Input:   k    = link index                                
+**           s    = current status                            
+**           hset = valve head setting                        
+**           h1   = head at upstream node                     
+**           h2   = head at downstream node                   
+**  Output:  returns new valve status                         
+**  Purpose: updates status of a pressure reducing valve.     
+**-----------------------------------------------------------
+*/
+{
+   LinkStatus   status;     /* New valve status */
+   double hml;        /* Minor headloss   */
+   double htol = Htol;
+
+   status = s;
+   if (S[k] == DISABLED) return(status);       /* Status fixed by user */
+   hml = _net->Link[k].Km*SQR(Q[k]);                /* Head loss when open  */
+
+/*** Status rules below have changed. ***/                                     //(2.00.11 - LR)
+
+   switch (s)
+   {
+      case PARTIAL:
+         if (Q[k] < -Qtol)            status = CLOSED;
+         else if (h1-hml < hset-htol) status = FULL_OPEN;                           //(2.00.11 - LR)
+         else                         status = PARTIAL;
+         break;
+      case FULL_OPEN:
+         if (Q[k] < -Qtol)            status = CLOSED;
+         else if (h2 >= hset+htol)    status = PARTIAL;                         //(2.00.11 - LR)
+         else                         status = FULL_OPEN;
+         break;
+      case CLOSED:
+         if ( h1 >= hset+htol                                                  //(2.00.11 - LR)
+           && h2 < hset-htol)         status = PARTIAL;                         //(2.00.11 - LR)
+         else if (h1 < hset-htol                                               //(2.00.11 - LR)
+               && h1 > h2+htol)       status = FULL_OPEN;                           //(2.00.11 - LR)
+         else                         status = CLOSED;
+         break;
+
+   }
+   return(status);
+}
+
+
+Solver::LinkStatus  Solver::psvstatus(int k, Solver::LinkStatus s, double hset, double h1, double h2)
+/*
+**-----------------------------------------------------------
+**  Input:   k    = link index                                
+**           s    = current status                            
+**           hset = valve head setting                        
+**           h1   = head at upstream node                     
+**           h2   = head at downstream node                   
+**  Output:  returns new valve status                         
+**  Purpose: updates status of a pressure sustaining valve.   
+**-----------------------------------------------------------
+*/
+{
+   Solver::LinkStatus  status;       /* New valve status */
+   double hml;          /* Minor headloss   */
+   double htol = Htol;
+
+   status = s;
+   if (S[k] == DISABLED) return(status);       /* Status fixed by user */
+   hml = _net->Link[k].Km*SQR(Q[k]);                /* Head loss when open  */
+
+/*** Status rules below have changed. ***/                                     //(2.00.11 - LR)
+
+   switch (s)
+   {
+      case PARTIAL:
+         if (Q[k] < -Qtol)            status = CLOSED;
+         else if (h2+hml > hset+htol) status = FULL_OPEN;                           //(2.00.11 - LR)
+         else                         status = PARTIAL;
+         break;
+      case FULL_OPEN:
+         if (Q[k] < -Qtol)            status = CLOSED;
+         else if (h1 < hset-htol)     status = PARTIAL;                         //(2.00.11 - LR)
+         else                         status = FULL_OPEN;
+         break;
+      case CLOSED:
+         if (h2 > hset+htol                                                    //(2.00.11 - LR)
+          && h1 > h2+htol)            status = FULL_OPEN;                           //(2.00.11 - LR)
+         else if (h1 >= hset+htol                                              //(2.00.11 - LR)
+               && h1 > h2+htol)       status = PARTIAL;                         //(2.00.11 - LR)
+         else                         status = CLOSED;
+         break;
+
+   }
+   return(status);
+}
+
+
+
+double Solver::newflows()
+/*
+**----------------------------------------------------------------
+**  Input:   none                                                
+**  Output:  returns solution convergence error                  
+**  Purpose: updates link flows after new nodal heads computed   
+**----------------------------------------------------------------
+*/
+{
+   double  dh,                    /* Link head loss       */
+           dq;                    /* Link flow change     */
+   double  dqsum,                 /* Network flow change  */
+           qsum;                  /* Network total flow   */
+   int   k, n, n1, n2;
+
+   /* Initialize net inflows (i.e., demands) at tanks */
+   for (n=_net->Njuncs+1; n <= _net->Nnodes; n++) D[n] = 0.0;
+
+   /* Initialize sum of flows & corrections */
+   qsum  = 0.0;
+   dqsum = 0.0;
+
+   /* Update flows in all links */
+   for (k=1; k<=_net->Nlinks; k++)
+   {
+
+      /*
+      ** Apply flow update formula:                   
+      **   dq = Y - P*(new head loss)                 
+      **    P = 1/(dh/dq)                             
+      **    Y = P*(head loss based on current flow)   
+      ** where P & Y were computed in newcoeffs().   
+      */
+
+      n1 = _net->Link[k].N1;
+      n2 = _net->Link[k].N2;
+      dh = H[n1] - H[n2];
+      dq = Y[k] - P[k]*dh;
+
+      Q[k] -= dq;
+
+      /* Update sum of absolute flows & flow corrections */
+      qsum += abs(Q[k]);
+      dqsum += abs(dq);
+
+      /* Update net flows to tanks */
+      if ( S[k] != DISABLED )                                                     //(2.00.12 - LR)
+      {
+         if (n1 > _net->Njuncs) D[n1] -= Q[k];
+         if (n2 > _net->Njuncs) D[n2] += Q[k];
+      }
+
+   }
+
+   /* Update emitter flows */
+   for (k=1; k<=_net->Njuncs; k++)
+   {
+      if (_net->Node[k].Ke == 0.0 || 
+		  (unsigned(_tabCAT[k]) & unsigned(Channel::B) ) ) // b-emitter-conflict
+		  continue;
+      dq = emitflowchange(k);
+      E[k] -= dq;
+      qsum += abs(E[k]);
+      dqsum += abs(dq);
+   }
+
+   /* Return ratio of total flow corrections to total flow */
+   if (qsum > Hacc) return(dqsum/qsum);
+   else return(dqsum);
+
+}                        /* End of newflows */
+
+
+double  Solver::emitflowchange(int i)
+/*
+**--------------------------------------------------------------
+**   Input:   i = node index
+**   Output:  returns change in flow at an emitter node                                                
+**   Purpose: computes flow change at an emitter node
+**--------------------------------------------------------------
+*/
+{
+   double ke, p;
+   ke = max(CSMALL, _net->Node[i].Ke);
+   p = _net->Qexp*ke*pow(abs(E[i]),(_net->Qexp-1.0));
+   if (p < RQtol)
+      p = 1/RQtol;
+   else
+      p = 1.0/p;
+   return(E[i]/_net->Qexp - p*(H[i] - _net->Node[i].El));
+}
+
+
+int  Solver::badvalve(int n)
+/*  originally in hydraulic.c
+**-----------------------------------------------------------------
+**  Input:   n = node index                                                
+**  Output:  returns 1 if node n belongs to an active control valve,
+**           0 otherwise  
+**  Purpose: determines if a node belongs to an active control valve
+**           whose setting causes an inconsistent set of eqns. If so,
+**           the valve status is fixed open and a warning condition
+**           is generated.
+**-----------------------------------------------------------------
+*/
+{
+   int i,k,n1,n2;
+   for (i=1; i<=_net->Nvalves; i++)
+   {
+      k = _net->Valve[i].Link;
+      n1 = _net->Link[k].N1;
+      n2 = _net->Link[k].N2;
+      if (n == n1 || n == n2)
+      {
+         if (_net->Link[k].Type == Network::PRV ||
+             _net->Link[k].Type == Network::PSV )
+         {
+            if (S[k] == Network::ACTIVE)
+            {
+
+                S[k] = Network::OPEN; // force open
+               return(1);
+            }
+         }
+         return(0);
+      }
+   }
+   return(0);
+}
+   
 void   Solver::newcoeffs()
 	/*
 	**--------------------------------------------------------------
@@ -545,7 +943,7 @@ void  Solver::valvecoeffs()
 	for (i=1; i<=_net->Nvalves; i++)                   /* Examine each valve   */
 	{
 		k = _net->Valve[i].Link;                        /* Link index of valve  */
-		if (S[k] != Network::ACTIVE ) continue;            /* Valve status fixed   */
+		if (S[k] == DISABLED ) continue;            /* Valve status fixed   */
 		n1 = _net->Link[k].N1;                          /* Start & end nodes    */
 		n2 = _net->Link[k].N2; 
 		switch (_net->Link[k].Type)                     /* Call valve-specific  */
@@ -576,7 +974,7 @@ void  Solver::prvcoeff(int k, int n1, int n2)
 	j  = _net->Row[n2];
 	hset   = _net->Node[n2].El + K[k];     /* Valve setting           */
 
-	if (S[k] == Network::ACTIVE)
+	if (S[k] != DISABLED)
 	{
 		/*
 		Set coeffs. to force head at downstream 
@@ -622,7 +1020,7 @@ void  Solver::psvcoeff(int k, int n1, int n2)
 	j  = _net->Row[n2];
 	hset   = _net->Node[n1].El + K[k];     /* Valve setting           */
 
-	if (S[k] == Network::ACTIVE)
+	if (S[k] != DISABLED)
 	{
 		/*
 		Set coeffs. to force head at upstream 
@@ -680,14 +1078,14 @@ void  Solver::linkcoeffs()
 		case Network::PUMP:  
 		case Network::GPV:  pumpcoeffB(k); break;
 		case Network::TCV:   tcvcoeff(k);  break;
-		case Network::PRV:
-		case Network::PSV:   
-			/* If valve status fixed then treat as pipe */
-			/* otherwise ignore the valve for now. */
-			if (S[k] != Network::ACTIVE) // valve pressure setting not specified.
-				valvecoeff(k);  //pipecoeff(k);      //(2.00.11 - LR)    
-			else continue;
-			break;
+//		case Network::PRV:
+//		case Network::PSV:   
+//			/* If valve status fixed then treat as pipe */
+//			/* otherwise ignore the valve for now. */
+//			if (S[k] != Network::ACTIVE) // valve pressure setting not specified.
+//				valvecoeff(k);  //pipecoeff(k);      //(2.00.11 - LR)    
+//			else continue;
+//			break;
 		default:    continue;                  
 		}                                         
 
@@ -763,7 +1161,7 @@ void  Solver::pipecoeff(int k)
 		dfdq;      /* Derivative of fric. fact. */
 
 	/* For closed pipe use headloss formula: h = CBIG*q */
-	if (S[k] == Network::CLOSED)
+	if (S[k] == DISABLED)
 	{
 		P[k] = 1.0/CBIG;
 		Y[k] = Q[k];
@@ -822,12 +1220,11 @@ void  Solver::tcvcoeff(int k)
 {
 	double km, tpkm, p;
 
-	/* Save original loss coeff. for open valve */
-	km = _net->Link[k].Km;
+	km = K[k];
 
 	/* If valve not fixed OPEN or CLOSED, compute its loss coeff. */
 	//   if (K[k] != Network::_TINY)
-	if (S[k] != Network::CLOSED) {// active
+	if (S[k] != DISABLED) {// active
 		tpkm = 0.02517*K[k]/(SQR(km)*SQR(km));
 		p = 2.0*km*fabs(Q[k]);
 		if ( p < RQtol ) p = RQtol;
@@ -852,7 +1249,7 @@ void Solver::valvecoeff(int k)
 	double p;
 
 	// Valve is closed. Use a very small matrix coeff.
-	if (S[k] == Network::CLOSED)
+	if (S[k] == DISABLED)
 	{
 		P[k] = 1.0/CBIG;
 		Y[k] = Q[k];

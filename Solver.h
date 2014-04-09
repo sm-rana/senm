@@ -56,6 +56,10 @@ public:  // Error and warning facilities
 		NOT_ENOUGH_XD,
 		TOO_MANY_XD,
         B_EMITTER_CONFLICT,
+        EQN_ILL_COND,
+        VALVE_CAUSE_ILL_COND,
+        MAX_ITER_REACHED,
+        CV_PSV_PRV_PROB,
 
 		LAST_DUMMY_W
 	};
@@ -93,8 +97,12 @@ public:  // Error and warning facilities
 	/// @}
 
 protected:
-	std::list<Warn> _warnListC; ///>Creation-time warning list
-	std::list<Warn> _warnListR; ///>Run-time warning list
+    ///Creation-time warning list, the list is built during solver creation
+    /// and never emptied
+	std::list<Warn> _warnListC; 
+    ///>Run-time warning list, the list is re-built with each hydraulic simulation
+	std::list<Warn> _warnListR; 
+
 public: // creation and destruction
 	///> Factory method.
 	/** Create a hydraulic solver for a given network-data source pair,
@@ -105,9 +113,9 @@ public: // creation and destruction
 	*/
 	static ECode createSolver(Network* net, DataSource* ds, Solver** outsolver);
 
-	/// Report solver creation errors
-	void reportCreation(); 
-	
+	/// Report solver creation error
+	static void reportCreationError(); 
+
 	// free memory
 	~Solver();
 
@@ -122,7 +130,7 @@ public:    //solver functionalities
    */
 	int run(double* xd, int nXd);
 
-	/// report all warnings in the run time warning list to stderr. clear warning list.
+	/// report all warnings in the both warning list to stderr. 
 	void report();
 
 
@@ -130,14 +138,14 @@ public:    //solver functionalities
 	// the simulation results. If Snapshot is not provided, use the previously
 	// set snapshot, if snapshot is not previously set, use default control
 	// in the solver's network. network must be solved already
-	double logLHyd(double* snapshot);
+	//double logLHyd(double* snapshot);
 
 	//> Get solver status
 	//status getStatus();
 
 	// Query results
-	double getPressure(const char* node_id);
-	double getFlowrate(const char* link_id);
+	//double getPressure(const char* node_id);
+	//double getFlowrate(const char* link_id);
 
 
 
@@ -166,11 +174,13 @@ protected:
 
 	// hydarulic engine configuration
 	double Htol; /* head tolerance */ 
+	double Qtol; /* flow rate tolerance */ 
 	double Hacc; /*hydraulic accuracy*/
 	int MaxIter;  /*  max. hydraulic trials  */
 	int ExtraIter;              /* Stop if network unbalanced     */
 	double RQtol;  /* hydraulics parameters  */
-	int CheckFreq, MaxCheck, DampLimit;
+//    double RelaxFactor;  // Relaxation factor for the iterative solver (flow)
+//	double DampLimit; // if residual error is less than it, will decrease Ralaxation
 
 	// constants
 	//static const double MISSING, QZERO;
@@ -208,7 +218,17 @@ protected:
 		*X;                    /* General purpose array        */
 
 	double   *H;                    /* Node heads                   */
-	char     *S;                    /* Link status                  */
+
+public:
+    /// if a link is enabled, status of it
+    enum LinkStatus {
+        FULL_OPEN, /// opened no valving headloss
+        PARTIAL, /// partially opened
+        CLOSED, ///> closed, but may be opened in subsequent iterations
+        DISABLED, ///> keep closed
+	};
+protected:
+	LinkStatus     *S;                    /* Link status                  */
 
 	// Sparse matrix solver, XLNZ, NZSUB, and LNZ are fixed and thus stored in Network class
 	double   *Aii,        /* Diagonal coeffs. of A               */
@@ -249,13 +269,28 @@ protected:
 
     void valvecoeffs();
 
+    /// @}
 	double SGN(double x) {return (x<0?-1:1);};
 	double SQR(double x) {return x*x;};
     
+    ///> iterative solver
     int linsolve(int n ,double* Aii, double* Aij, double *B);
 
+    int badvalve(int n);
+    double newflows();
 
-    /// @}
+    double emitflowchange(int);
+
+    int valvestatus();
+    int linkstatus();
+    LinkStatus cvstatus(LinkStatus s, double dh, double q);
+       
+
+    LinkStatus  psvstatus(int k, LinkStatus  s, double hset, double h1, double h2);
+    LinkStatus  prvstatus(int k, LinkStatus  s, double hset, double h1, double h2);
+
+
+
 
 
 };

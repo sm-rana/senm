@@ -39,9 +39,6 @@
     <ClInclude Include="Varima.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="vtkincludes.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="rngs\rvgs.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -69,6 +66,18 @@
     <ClInclude Include="VisNetwork.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="dictionary.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="iniparser.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="SenmVtkIncs.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="SenMCoreIncs.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Network.cpp">
@@ -85,9 +94,6 @@
     </ClCompile>
     <ClCompile Include="Viewer.cpp">
       <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="buildControl.h">
-      <Filter>Header Files</Filter>
     </ClCompile>
     <ClCompile Include="testDataSource.cpp">
       <Filter>Source Files</Filter>
@@ -111,6 +117,12 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="VisNetwork.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dictionary.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="iniparser.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

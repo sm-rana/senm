@@ -174,7 +174,7 @@ SenM::Err SenM::init(LPCTSTR netn, LPCTSTR dcs, CTime* st, unsigned dt, Varima* 
 			return DB_DATA_ERROR;
 		}
 		_dt = dt;
-		_tprintf(TEXT("\tTime quantum: %d, Number of Channels: %d\n"), _dt, _source->getNChan());
+		_tprintf(TEXT("\tTime quantum: %d, Number of Channels: %d\n"), _dt, _source->n_chan);
 	}
 
 	//check demand model
@@ -631,8 +631,8 @@ SenM::Err SenM::initScada() {
 	_tprintf(TEXT("[0] Building Scada channel visuals...\n"));
 	_vrScada = vtkRenderer::New();
 		
-	_nSensors = _source->getNChan(); 
-	Channel* clist = _source->getChanList();
+	_nSensors = _source->n_chan; 
+	Channel* clist = _source->channel_list;
 
 #ifdef _DEBUG
 	_source->dumpChannelsInfo();
@@ -807,7 +807,7 @@ SenM::Err SenM::run() {
 			_senm_time.Format(TEXT("%c")) );
 
 		CTimeSpan dts(0, 0, 0, _dt);
-		int nChan = _source->getNChan();
+		int nChan = _source->n_chan;
 		double* snapshot = new double[nChan];
 
 		for (;; _senm_time += dts) { // main scada loading cycle

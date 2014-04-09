@@ -231,9 +231,9 @@ public:
 };
 	/** Link/Tank status:                   */
 	enum StatType                  
-	{CLOSED,       /**>   closed                            */
+	{CLOSED,       /**>   closed                          */
 	OPEN,         /**>   open                              */
-    ACTIVE
+//    ACTIVE,  ///>  
 };
 	/** Type of pump curve:                 */
 	enum PumpType                  

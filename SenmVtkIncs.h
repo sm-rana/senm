@@ -1,6 +1,5 @@
-// All vtk header files
-#pragma once
 
+// vtk includes
 #include <Common/vtkObjectFactory.h>
 #include <Common/vtkFloatArray.h>
 #include <Common/vtkPoints.h>

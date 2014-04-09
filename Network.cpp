@@ -5,7 +5,7 @@
 #include <Windows.h>
 #include "Percentile.h"
 #include "Network.h"
-#include "buildControl.h"
+#include "senmCoreIncs.h"
 
 Network* Network::singleton = NULL;
 

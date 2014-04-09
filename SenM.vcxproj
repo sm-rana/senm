@@ -55,7 +55,7 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;%(PreprocessorDefinitions);</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(ProjectDir)\..\VTK\Common;$(ProjectDir)\..\VTK\Hybrid;$(ProjectDir)\..\VTK\Graphics;$(ProjectDir)\..\VTK\Charts;$(ProjectDir)\..\VTK\Geovis;$(ProjectDir)\..\VTK\Rendering;$(ProjectDir)\..\VTK\Filtering;$(ProjectDir)\..\..\DevLibs\VTK5;$(ProjectDir)\..\..\DevLibs\VTK5\IO;$(ProjectDir)\..\..\DevLibs\VTK5\Filters;$(ProjectDir)\..\..\DevLibs\VTK5\Common;$(ProjectDir)\..\..\DevLibs\VTK5\Rendering;$(ProjectDir)rngs;$(ProjectDir)epanet-lt;$(ProjectDir)SFMC</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)..\VTK\common;$(ProjectDir)..\VTK;$(ProjectDir)\..\..\DevLibs\VTK5;$(ProjectDir)rngs;$(ProjectDir)epanet-lt;$(ProjectDir)SFMC</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -90,11 +90,14 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="DataSource.h" />
+    <ClInclude Include="dictionary.h" />
+    <ClInclude Include="iniparser.h" />
     <ClInclude Include="Network.h" />
     <ClInclude Include="Percentile.h" />
     <ClInclude Include="Population.h" />
     <ClInclude Include="rngs\rvgs.h" />
     <ClInclude Include="SenM.h" />
+    <ClInclude Include="SenMCoreIncs.h" />
     <ClInclude Include="Sensor.h" />
     <ClInclude Include="SFMC\SFMT-common.h" />
     <ClInclude Include="SFMC\SFMT-params.h" />
@@ -105,11 +108,12 @@
     <ClInclude Include="Varima.h" />
     <ClInclude Include="Viewer.h" />
     <ClInclude Include="VisNetwork.h" />
-    <ClInclude Include="vtkincludes.h" />
+    <ClInclude Include="SenmVtkIncs.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="buildControl.h" />
     <ClCompile Include="DataSource.cpp" />
+    <ClCompile Include="dictionary.c" />
+    <ClCompile Include="iniparser.c" />
     <ClCompile Include="Network.cpp" />
     <ClCompile Include="Population.cpp" />
     <ClCompile Include="rngs\rvgs.cpp" />
