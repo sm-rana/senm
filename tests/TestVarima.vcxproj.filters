@@ -1,0 +1,50 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="rngs">
+      <UniqueIdentifier>{4c69f42e-6057-4cd9-824d-9c26518ea297}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="SFMT_1.4">
+      <UniqueIdentifier>{1e5d4915-2cb6-4299-a0de-7546a5944377}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\src\rngs\rngs.c">
+      <Filter>rngs</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\rngs\rvgs.cpp">
+      <Filter>rngs</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\SFMT_1.4\SFMT.c">
+      <Filter>SFMT_1.4</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\Varima.cpp" />
+    <ClCompile Include="TestVarima.cpp" />
+    <ClCompile Include="..\src\Population.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\src\rngs\rngs.h">
+      <Filter>rngs</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\rngs\rvgs.h">
+      <Filter>rngs</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\SFMT_1.4\SFMT.h">
+      <Filter>SFMT_1.4</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\SFMT_1.4\SFMT-common.h">
+      <Filter>SFMT_1.4</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\SFMT_1.4\SFMT-params.h">
+      <Filter>SFMT_1.4</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\SFMT_1.4\SFMT-params19937.h">
+      <Filter>SFMT_1.4</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\SFMT_1.4\SFMT-sse2.h">
+      <Filter>SFMT_1.4</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\Population.h" />
+    <ClInclude Include="..\src\Varima.h" />
+  </ItemGroup>
+</Project>

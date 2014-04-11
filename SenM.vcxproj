@@ -10,6 +10,38 @@
       <Platform>x64</Platform>
     </ProjectConfiguration>
   </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="src\DataSource.cpp" />
+    <ClCompile Include="src\Network.cpp" />
+    <ClCompile Include="src\Population.cpp" />
+    <ClCompile Include="src\ScadaGenerator.cpp" />
+    <ClCompile Include="src\SenM.cpp" />
+    <ClCompile Include="src\Sensor.cpp" />
+    <ClCompile Include="src\Solver.cpp" />
+    <ClCompile Include="src\testDataSource.cpp" />
+    <ClCompile Include="src\testSenM.cpp" />
+    <ClCompile Include="src\testSG.cpp" />
+    <ClCompile Include="src\testVarima.cpp" />
+    <ClCompile Include="src\testVisi.cpp" />
+    <ClCompile Include="src\Varima.cpp" />
+    <ClCompile Include="src\Viewer.cpp" />
+    <ClCompile Include="src\VisNetwork.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="src\DataSource.h" />
+    <ClInclude Include="src\Network.h" />
+    <ClInclude Include="src\Percentile.h" />
+    <ClInclude Include="src\Population.h" />
+    <ClInclude Include="src\ScadaGenerator.h" />
+    <ClInclude Include="src\SenM.h" />
+    <ClInclude Include="src\SenMCoreIncs.h" />
+    <ClInclude Include="src\SenmVtkIncs.h" />
+    <ClInclude Include="src\Sensor.h" />
+    <ClInclude Include="src\Solver.h" />
+    <ClInclude Include="src\Varima.h" />
+    <ClInclude Include="src\Viewer.h" />
+    <ClInclude Include="src\VisNetwork.h" />
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{C0C099C7-D649-40C6-8ACE-77532B2B7416}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
@@ -88,48 +120,6 @@
       <AdditionalLibraryDirectories>$(ProjectDir)..\..\DevLibs\VTK5\bin\$(Configuration);libs</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
-  <ItemGroup>
-    <ClInclude Include="DataSource.h" />
-    <ClInclude Include="dictionary.h" />
-    <ClInclude Include="iniparser.h" />
-    <ClInclude Include="Network.h" />
-    <ClInclude Include="Percentile.h" />
-    <ClInclude Include="Population.h" />
-    <ClInclude Include="rngs\rvgs.h" />
-    <ClInclude Include="SenM.h" />
-    <ClInclude Include="SenMCoreIncs.h" />
-    <ClInclude Include="Sensor.h" />
-    <ClInclude Include="SFMC\SFMT-common.h" />
-    <ClInclude Include="SFMC\SFMT-params.h" />
-    <ClInclude Include="SFMC\SFMT-params19937.h" />
-    <ClInclude Include="SFMC\SFMT-sse2.h" />
-    <ClInclude Include="SFMC\SFMT.h" />
-    <ClInclude Include="Solver.h" />
-    <ClInclude Include="Varima.h" />
-    <ClInclude Include="Viewer.h" />
-    <ClInclude Include="VisNetwork.h" />
-    <ClInclude Include="SenmVtkIncs.h" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClCompile Include="DataSource.cpp" />
-    <ClCompile Include="dictionary.c" />
-    <ClCompile Include="iniparser.c" />
-    <ClCompile Include="Network.cpp" />
-    <ClCompile Include="Population.cpp" />
-    <ClCompile Include="rngs\rvgs.cpp" />
-    <ClCompile Include="SenM.cpp" />
-    <ClCompile Include="Sensor.cpp" />
-    <ClCompile Include="SFMC\SFMT.c" />
-    <ClCompile Include="Solver.cpp" />
-    <ClCompile Include="testDataSource.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="testSenM.cpp" />
-    <ClCompile Include="Varima.cpp" />
-    <ClCompile Include="Viewer.cpp" />
-    <ClCompile Include="VisNetwork.cpp" />
-  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

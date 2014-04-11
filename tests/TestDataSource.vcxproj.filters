@@ -1,0 +1,21 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="iniParser_3.1">
+      <UniqueIdentifier>{3e3f8d09-8127-4325-8b27-a678d0770ec6}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\src\iniParser_3.1\dictionary.cpp">
+      <Filter>iniParser_3.1</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\iniParser_3.1\iniparser.cpp">
+      <Filter>iniParser_3.1</Filter>
+    </ClCompile>
+    <ClCompile Include="TestDataSource.cpp" />
+    <ClCompile Include="..\src\DataSource.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\src\DataSource.h" />
+  </ItemGroup>
+</Project>

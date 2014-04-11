@@ -189,7 +189,7 @@ Varima::Err  Varima::generate(double* z_out) {
 		integer incx=1;
 		// use cholesky lower-triangular matrix to generate correlated vector white noise
 		dgemv_("N", (integer*)&n, (integer*)&n, &alpha, lcov, (integer*)&n,
-			tpa, &incx, &beta, ma, (integer*)&ncma); // L matrix * vector
+			tpa, &incx, &beta, &ma[pma], (integer*)&ncma); // L matrix * vector
 	} else {// use embeded model
 		if (in->generate(NULL)) return GEN_ERROR;
 		for (j=0; j<n; ++j) 

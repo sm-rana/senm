@@ -22,7 +22,7 @@ for more details.   */
 #define POPH(pop, iw, im, id)   (pop->h[iw][(id)*pop->M + (im)])
 #define POPOS(pop, iw, im, id)   (pop->_os[iw][(id)*pop->M + (im)])
 
-// default max-lag of autocorrelation computation (hours in a month)
+// default max-lag of autocovariance computation (hours in a month)
 //#define POP_MAX_ACF (24*7*4)  
 #define POP_MAX_ACF 5  
 // report acf
@@ -58,7 +58,7 @@ struct Population {
 	double* sdev[N_WORKERS];  ///> chain std deviation, dim = d1*d2
 	double* tsdev; ///> total std deviation
 
-    /// cross-correlation matrix for vector time series, only for 1d data (d2==1)
+    /// autocovariances for vector time series, only for 1d data (d2==1)
 	double* acor[N_WORKERS][POP_MAX_ACF]; 
 
     /// order statistics - ranks in single chain

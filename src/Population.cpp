@@ -305,7 +305,8 @@ void Pop_report(Population* pop, FILE* target) {
         for (iac = 0; iac < POP_REP_ACF; ++iac) {
 			_ftprintf(target, TEXT(" <%u>"), iac);
 			for (iw=0; iw< N_WORKERS; ++iw) 
-				_ftprintf(target, TEXT("%6.2f,"), pop->acor[iw][iac][id]);
+				_ftprintf(target, TEXT("%6.2f,"), 
+				  pop->acor[iw][iac][id]/POP_SQR(pop->sdev[iw][id]));
 		}
         _ftprintf(target, TEXT("\n"));
 	}
