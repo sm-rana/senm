@@ -1,0 +1,136 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{FCC3CCB8-ABB7-42CE-9A63-2D1E2E0A2DD2}</ProjectGuid>
+    <Keyword>Win32Proj</Keyword>
+    <RootNamespace>TestSolver</RootNamespace>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v110</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v110</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="PropertySheets">
+    <Import Project="..\SenMCommon.props" />
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="PropertySheets">
+    <Import Project="..\SenMCommon.props" />
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <LinkIncremental>true</LinkIncremental>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <LinkIncremental>false</LinkIncremental>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\src\DataSource.cpp" />
+    <ClCompile Include="..\..\src\EPANET-lt\epanet.c" />
+    <ClCompile Include="..\..\src\EPANET-lt\hash.c" />
+    <ClCompile Include="..\..\src\EPANET-lt\hydraul.c" />
+    <ClCompile Include="..\..\src\EPANET-lt\inpfile.c" />
+    <ClCompile Include="..\..\src\EPANET-lt\input1.c" />
+    <ClCompile Include="..\..\src\EPANET-lt\input2.c" />
+    <ClCompile Include="..\..\src\EPANET-lt\input3.c" />
+    <ClCompile Include="..\..\src\EPANET-lt\lemontiger.c" />
+    <ClCompile Include="..\..\src\EPANET-lt\mempool.c" />
+    <ClCompile Include="..\..\src\EPANET-lt\output.c" />
+    <ClCompile Include="..\..\src\EPANET-lt\quality.c" />
+    <ClCompile Include="..\..\src\EPANET-lt\report.c" />
+    <ClCompile Include="..\..\src\EPANET-lt\rules.c" />
+    <ClCompile Include="..\..\src\EPANET-lt\smatrix.c" />
+    <ClCompile Include="..\..\src\EPANET-lt\testLT.c" />
+    <ClCompile Include="..\..\src\ewi.cpp" />
+    <ClCompile Include="..\..\src\iniParser_3.1\dictionary.cpp" />
+    <ClCompile Include="..\..\src\iniParser_3.1\iniparser.cpp" />
+    <ClCompile Include="..\..\src\Network.cpp" />
+    <ClCompile Include="..\..\src\rngs\rngs.c" />
+    <ClCompile Include="..\..\src\rngs\rvgs.cpp" />
+    <ClCompile Include="..\..\src\ScadaGenerator.cpp" />
+    <ClCompile Include="..\..\src\SFMT_1.4\SFMT.c" />
+    <ClCompile Include="..\..\src\Solver.cpp" />
+    <ClCompile Include="..\..\src\Varima.cpp" />
+    <ClCompile Include="..\TestSolver.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\src\DataSource.h" />
+    <ClInclude Include="..\..\src\EPANET-lt\enumstxt.h" />
+    <ClInclude Include="..\..\src\EPANET-lt\funcs.h" />
+    <ClInclude Include="..\..\src\EPANET-lt\hash.h" />
+    <ClInclude Include="..\..\src\EPANET-lt\lemontiger.h" />
+    <ClInclude Include="..\..\src\EPANET-lt\mempool.h" />
+    <ClInclude Include="..\..\src\EPANET-lt\text.h" />
+    <ClInclude Include="..\..\src\EPANET-lt\toolkit.h" />
+    <ClInclude Include="..\..\src\EPANET-lt\types.h" />
+    <ClInclude Include="..\..\src\EPANET-lt\vars.h" />
+    <ClInclude Include="..\..\src\Network.h" />
+    <ClInclude Include="..\..\src\rngs\rngs.h" />
+    <ClInclude Include="..\..\src\rngs\rvgs.h" />
+    <ClInclude Include="..\..\src\ScadaGenerator.h" />
+    <ClInclude Include="..\..\src\SenmCoreIncs.h" />
+    <ClInclude Include="..\..\src\SFMT_1.4\SFMT-common.h" />
+    <ClInclude Include="..\..\src\SFMT_1.4\SFMT-params.h" />
+    <ClInclude Include="..\..\src\SFMT_1.4\SFMT-params19937.h" />
+    <ClInclude Include="..\..\src\SFMT_1.4\SFMT-sse2.h" />
+    <ClInclude Include="..\..\src\SFMT_1.4\SFMT.h" />
+    <ClInclude Include="..\..\src\Solver.h" />
+    <ClInclude Include="..\..\src\Varima.h" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

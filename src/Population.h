@@ -101,18 +101,11 @@ Pop_Err Pop_new(unsigned M_in, unsigned d1_in, unsigned d2_in, Population** pop_
 Pop_Err Pop_new(unsigned M_in, unsigned d1_in, unsigned d2_in, Population** pop_out, int shadow);
 Pop_Err Pop_new(unsigned M_in, unsigned d1_in, Population** pop_out) ;
 
-void Pop_del(Population* pop);
+void Pop_del(Population** pop);
 
 ///> report statistics
 void Pop_report(Population* pop, FILE* target=stdout);
 
 ///> Update all statistics. 
 void Pop_calc(Population* pop);
-
-//---- internal functions ----
-// comparison within a chain
-int Pop_chainCmp(const void* p1, const void* p2);
-
-// comparison in total pop
-int Pop_TchainCmp(const void* p1, const void* p2);
 

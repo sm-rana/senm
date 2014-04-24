@@ -12,6 +12,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\src\DataSource.cpp" />
+    <ClCompile Include="..\src\ewi.cpp" />
     <ClCompile Include="..\src\iniParser_3.1\dictionary.cpp" />
     <ClCompile Include="..\src\iniParser_3.1\iniparser.cpp" />
     <ClCompile Include="TestDataSource.cpp" />

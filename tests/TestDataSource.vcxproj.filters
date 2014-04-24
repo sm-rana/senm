@@ -14,6 +14,7 @@
     </ClCompile>
     <ClCompile Include="TestDataSource.cpp" />
     <ClCompile Include="..\src\DataSource.cpp" />
+    <ClCompile Include="..\src\ewi.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\src\DataSource.h" />

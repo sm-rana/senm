@@ -14,11 +14,12 @@ for more details.   */
 
 #pragma once
 
-#include <winnt.h>
-#include <windows.h>
 #include <map>
 #include <list>
-#include <tchar.h>
+#include "SenmCoreIncs.h"
+
+/// Max string size of a component type string
+#define MAX_NET_CTYPE_STR_SIZE 64
 
 /// EPANET network infrastructure
 /**Singleton data container of distribution network infrastructure based on an EPANET inp file. 
@@ -37,19 +38,18 @@ Data managed by the Network class including:
 
 Any component in the network have 2 different types of IDs. 
 - (EPANET) index:  Index defined by the EPANET engine. Starts from 1. 
- Node index: 1 <= index <= MaxJuncs: Junctions
-   MaxJuncs < index <= MaxNodes :  tanks(including reservoirs).
- Link index: 1 <= index <= MaxPipes:  Pipes, 
-   MaxPipes < index <= MaxPumps: pumps, 
-   MaxPumps < index <= MaxLinks: valves
+Node index: 1 <= index <= MaxJuncs: Junctions
+MaxJuncs < index <= MaxNodes :  tanks(including reservoirs).
+Link index: 1 <= index <= MaxPipes:  Pipes, 
+MaxPipes < index <= MaxPumps: pumps, 
+MaxPumps < index <= MaxLinks: valves
 - (EPANET) ID:  ID string (i.e., name) defined by the EPANET engine. One-on-one map to index. 
 
 The PBV cannot be modeled in SenM.
 The FCV is treated as a TCV, (its setting is the minor head loss coeff.)
 */
-class Network {
-//error and warning system
-public:  
+struct Network {
+	//error and warning system
 	/** Errors produced when creating the network instance.*/
 	enum ErrorCode  {
 		OK, 
@@ -103,19 +103,18 @@ public:
 	enum WarnCode {
 		NONE,
 		PBV_SPECIFIED_IN_INP,
-        TCV_REPLACE_FCV,
+		TCV_REPLACE_FCV,
 
 	};     
 
 	/// Return the pointer to the text of an error code stored in a member char array
-    LPCTSTR problemText(ErrorCode ec); 
+	LPCTSTR problemText(ErrorCode ec); 
 	/// Return the text of a warning message
-    LPCTSTR problemText(WarnCode ec); 
+	LPCTSTR problemText(WarnCode ec); 
 
 	/// Report the list of warnings to stdout
 	void reportWarns(); 
 
-protected: 
 	ErrorCode _ecCur; // Current error code.
 	int _lineEc; // Line in which an error is detected
 	TCHAR _strProblem[1024]; // Text of error or warning messages.
@@ -125,8 +124,7 @@ protected:
 	std::list<Warn> _lsWC; // list of warning codes.   
 
 
-// Creation and destruction
-public:  
+	// Creation and destruction
 	///> Factory method. 
 	/** obtain a Network instance based on the EPANET inpfile, 
 	The Network instance is a singleton. If a network has not been created, 
@@ -144,9 +142,8 @@ public:
 	///> report network information to stdout
 	static void report();
 
-// Publiclly accessible types and constants
-public:
-    /** Variable types*/
+	// Publiclly accessible types and constants
+	/** Variable types*/
 	/** EPANET has its own typing system for the attributes of components. 
 	This enum is also used by Channel definition (\sa datasource.h),  Network class
 	the database schema (see .sql files), and graphic objects (\sa sensor.h)
@@ -157,7 +154,7 @@ public:
 		///   nodal elevation, 
 		/** The enum is also for monitored tank levels , 
 		and channel type 'L', The dimension of an ELEV variable is Length
-       \sa SensorTank
+		\sa SensorTank
 		*/
 		ELEV,             
 
@@ -180,7 +177,7 @@ public:
 		/// Pipe/pump/valve flow rate
 		/** In both Solver and SensorFlow the item is for flow rate,
 		with dimension of Length^3/time
-        \sa SensorFlow
+		\sa SensorFlow
 		*/
 		FLOW,         /*   link flow rate                    */
 
@@ -189,7 +186,7 @@ public:
 
 		///   link status                       
 		/// on/off status for links,  no dimension.
-        ///\sa SensorControl
+		///\sa SensorControl
 		LSTATUS,      
 
 		SETTING,      ///>   pump/valve setting                
@@ -202,7 +199,7 @@ public:
 		CLOCKTIME,    ///>   simulation time of day         
 		FILLTIME,     ///>   time to fill a tank           
 		DRAINTIME,   ///>   time to drain a tank         
-        UNKNOWN,  ///> unkown type of variable
+		UNKNOWN,  ///> unkown type of variable
 	};
 
 	/** Head loss formula:                  */
@@ -212,29 +209,31 @@ public:
 	CM};          /**>   Chezy-Manning                     */
 
 	/** Type of node:                       */
-	enum NodeType                  
-	{JUNC,          /**>    junction                         */
-	RESERV,        /**>    reservoir                        */
-	TANK};         /**>    tank                             */
+	enum ComponentType                  {
+		JUNC,          /**>    junction                         */
+		RESERV,        /**>    reservoir                        */
+		TANK,       ///> Water storage facility
+		CV,           /**>    pipe with check valve            */
+		PIPE,         /**>    regular pipe                     */
+		PUMP,			/**>    pump  */
+		PRV,          /**>    pressure reducing valve          */
+		PSV,          /**>    pressure sustaining valve        */
+		PBV,          /**>    pressure breaker valve           */
+		FCV,          /**>    flow control valve               */
+		TCV,          /**>    throttle control valve           */
+		GPV,         /**>    general purpose valve            */
+        UNDETERMINED,  ///> not determined component or no component
+	};
 
-	/** Type of link:                       */
-	enum LinkType                  
-	{CV,           /**>    pipe with check valve            */
-	PIPE,         /**>    regular pipe                     */
-	PUMP,			/**>    pump  */
-	PRV,          /**>    pressure reducing valve          */
-	PSV,          /**>    pressure sustaining valve        */
-	PBV,          /**>    pressure breaker valve           */
-	FCV,          /**>    flow control valve               */
-	TCV,          /**>    throttle control valve           */
-	GPV         /**>    general purpose valve            */
-};
+    /// fetch text description of a component
+    static TCHAR* typeStr(ComponentType, TCHAR*);
+
 	/** Link/Tank status:                   */
 	enum StatType                  
 	{CLOSED,       /**>   closed                          */
 	OPEN,         /**>   open                              */
-//    ACTIVE,  ///>  
-};
+	//    ACTIVE,  ///>  
+	};
 	/** Type of pump curve:                 */
 	enum PumpType                  
 	{CONST_HP,      /**>    constant horsepower              */
@@ -249,12 +248,8 @@ public:
 
 	///> Maximum tokens allowed in a line
 	static const int MAX_TOKS = 40;
-	///> CONSTANTS
-	static const double _PI, _TINY, _BIG;  //init in constructor
-    static const double Viscos;  // kinatic viscosity of water
 
-//Unit system
-public: 
+	//Unit system
 	///> General units type
 	/** Specifies type of units for variables other than flow rate 
 	and pressure */
@@ -281,7 +276,7 @@ public:
 
 	/** Text representation abbreviation level*/
 	enum AbbrLev
-	{SHORT, FULL};
+	{UNIT_SHORT, UNIT_FULL};
 
 	/// @{
 	///> Get string representation of a unit
@@ -291,19 +286,31 @@ public:
 	Storage of the char string should be been allocated
 	\return  Errors
 	*/
-	static ErrorCode unitText(FieldType type, UnitsType unit, TCHAR* str, AbbrLev al=SHORT); 
-	static ErrorCode unitText(FieldType type, FlowUnitsType unit, TCHAR* str, AbbrLev al=SHORT); 
-	static ErrorCode unitText(FieldType type, PressUnitsType unit, TCHAR* str, AbbrLev al=SHORT); 
+	static ErrorCode unitText(FieldType type, UnitsType unit, TCHAR* str, AbbrLev al=UNIT_SHORT); 
+	static ErrorCode unitText(FieldType type, FlowUnitsType unit, TCHAR* str, AbbrLev al=UNIT_SHORT); 
+	static ErrorCode unitText(FieldType type, PressUnitsType unit, TCHAR* str, AbbrLev al=UNIT_SHORT); 
 
 	/// @}
 
-//Utilities
-public:
+	//Utilities
 
-	///> Get number of nodes
+	/// Get number of nodes
 	int getNnodes() {return MaxNodes;};
-	///> Get number of water users.
+	/// Get number of water users.
 	int getNusers() {return Nusers;};
+	/// Get reference total system average demand
+	float* getRefD() {return ref_demand;};
+
+	// Maps for id-index lookup (nodes and links), original EPANET hashtable is deprecated
+	struct cmp_str 	{
+		bool operator()(char const *a, char const *b)
+		{
+			return std::strcmp(a, b) < 0;
+		}
+	};
+	std::map<char*, int, cmp_str> Nht, Lht;
+	typedef std::pair<char*, int> HTPair;
+	typedef std::map<char*, int>::iterator HTIt;
 
 	///> Find the EPANET ID string for an EPANET index
 	/** \param [in] nodeid        EPANET index
@@ -317,7 +324,19 @@ public:
 		else name[0] = '\0'; // empty string
 	};
 
-	///> Get the maxiumu baseline demand
+    /// Find index for the EPANET ID
+    int name2idx(char* name) {
+        HTIt it;
+		it = Nht.find(name);
+		if (it!=Nht.end()) return it->second;
+
+        it = Lht.find(name);
+		if (it!=Lht.end()) return it->second;
+
+        return 0; //not found
+	}
+
+	/// Get the maxiumu baseline demand
 	double getMaxBaselineDemand() {
 		_maxBD = -DBL_MAX;
 		for (int i=1;i<MaxNodes;++i)
@@ -326,14 +345,13 @@ public:
 		return _maxBD;
 	}
 
-	///> Get a percentile of the baseline demand
+	/// Get a percentile of the baseline demand
 	/** \param [in] pc      percentile, must between 0 and 1
 	*/
 	double getBaseDemandPercentile(double pc);
 
 
 
-protected:
 	// definitions of data structures for the network
 	/* Element of list of floats */
 	typedef struct  Floatlist { 
@@ -475,14 +493,12 @@ protected:
 	static char* SectTxt[];  
 
 
-protected:
 	TCHAR _info[1024]; ///> information string about the loaded network
 
 	double _maxBD; //max baseline demand
 
 
 
-protected:
 	// The only instance allowed for this class
 	static Network* singleton; 
 
@@ -490,9 +506,9 @@ protected:
 	/// \sa Solver
 	friend class Solver;
 
-    /// Make VisNetwork class a friend class, 
-    /// \sa VisNetwork
-    friend class VisNetwork;
+	/// Make VisNetwork class a friend class, 
+	/// \sa VisNetwork
+	friend class VisNetwork;
 
 	// Options/configurations
 	UnitsType Unitsflag;
@@ -504,12 +520,13 @@ protected:
 
 	int DefPat;               /* Default demand pattern index   */
 	char DefPatID[MAX_ID];	 /*Default pattern id */
-	int Dmult;             /* Demand multiplier              */ 
+	double Dmult;             /* Demand multiplier              */ 
 	float Qexp;  /* Emitter flow exponent */
 
 	// Component counts
 	int MaxJuncs, MaxTanks, MaxPipes, MaxPumps, MaxValves;
 	int MaxNodes, MaxLinks;
+	float* ref_demand; // base hourly water demand for users
 
 	// Component iterators (for input processing only)
 	int Njuncs, Nnodes, Ntanks, Npipes, Npumps, Nvalves, Nlinks;
@@ -560,19 +577,6 @@ protected:
 	Spattern *Pattern;
 
 
-	// Maps for id-index lookup (nodes and links), original EPANET hashtable is deprecated
-
-	struct cmp_str 	{
-		bool operator()(char const *a, char const *b)
-		{
-			return std::strcmp(a, b) < 0;
-		}
-	};
-	std::map<char*, int, cmp_str> Nht, Lht;
-	typedef std::pair<char*, int> HTPair;
-	typedef std::map<char*, int>::iterator HTIt;
-
-protected:
 	// disable default constructor
 	Network(); 
 	//members

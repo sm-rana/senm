@@ -19,6 +19,7 @@ for more details.   */
 #include <tchar.h>
 #include <atltime.h>
 #include <strsafe.h>
+#include "SenmCoreIncs.h"
 #include "Network.h"
 
 struct Provider;
@@ -26,10 +27,6 @@ struct Channel;
 struct DataSource;
 
 #define Tstamp SQL_TIMESTAMP_STRUCT  ///> Use Timestamp struct
-
-
-
-#define DATASOURCE_MAX_ERR_TEXT  512  ///> max string size of datasource error text 
 #define DATASOURCE_MAX_CHAN_INFO  128  ///> max string size of channel type info text
 
 /// Data source manager
@@ -44,10 +41,10 @@ struct DataSource {
 		CANT_ADD_PROVIDER,
 		NO_CHAN_ADDED,
 		CANT_GET_DATA_THRU_CHAN,
-        INI_FILE_ERR,
-        DELTA_T_ERR_INI_FILE,
-        N_PROVIDER_ERR_INI_FILE,
-        CANNOT_CREATE_PROVIDER,
+		INI_FILE_ERR,
+		DELTA_T_ERR_INI_FILE,
+		N_PROVIDER_ERR_INI_FILE,
+		CANNOT_CREATE_PROVIDER,
 
 		DUMMY_LAST
 
@@ -62,12 +59,10 @@ struct DataSource {
 
 	double* _datBuf;  ///> data buffer - most recent snapshot with updateBufSnapshot()
 	Provider* lsProv; ///> list of data providers, mem managed here
-    Channel* lsChan; ///> list of channels, mem managed by provider
+	Channel* lsChan; ///> list of channels, mem managed by provider
 
-	/// report error in text to a file (default to stderr)
-	static void report(Err err, FILE* errfile = stderr);
-	/// report text representation of error to a pre-allocated array with MAX_SIZE_DS_ERR_TEXT
-	static void report(Err err, TCHAR* arr);
+	/// report text representation of error 
+	static void reportEWI(Err err);
 
 	/// Factory method: create a DataSource with an existing data provider. 
 	/** \param [in] dt_in     Time quantum in seconds
@@ -76,11 +71,12 @@ struct DataSource {
 	*/
 	//static Err New(unsigned dt_in, Provider* prov, DataSource** ds_out);
 
-    /// Factory method: create a DataSource using a .ini configuration file
-    /** \param [in] ininame    INI configuration file name
-        \param [out] ds_out   created datasource object
-        */
-    static Err New(const char *ininame, DataSource** ds_out);
+	/// Factory method: create a DataSource using a .ini configuration file
+	/** \param [in] ininame    INI configuration file name
+	\param [out] ds_out   created datasource object
+	*/
+	static Err New(const char *ininame, DataSource** ds_out);
+	static Err New(const char *ininame, Network* net, DataSource** ds_out);
 
 	///
 	/** add a data provider and all its channels */
@@ -119,7 +115,7 @@ struct DataSource {
 	~DataSource(); //clean all providers, release memory of the data buffer
 
 protected: //disable default constructor
-    DataSource();
+	DataSource();
 
 
 };
@@ -129,7 +125,6 @@ protected: //disable default constructor
 #define MAX_DSN_LEN  2048 ///> Maximum length of the DSN (connection string)
 #define MAX_TABLE_NAME  1024 ///> Maximum size of table name string
 #define MAX_SQL_LEN  1023 ///> Maximum size of SQL query string
-#define PROVIDER_MAX_ERRTXT 512 ///> max size of error txt
 
 /// Database connection manager 
 /**  An instance of the Provider class manages a database connection.
@@ -141,7 +136,8 @@ struct Provider
 	SQLHENV     hEnv;   ///> environment handle
 	SQLHDBC     hDbc;	///> connection handle
 	SQLHSTMT    hStmt;	///> general statement handle
-	SQLHSTMT	hStmt_dat; ///> statement for getting data
+	SQLHSTMT	hStmt_dat; ///> statement for reading data
+	SQLHSTMT	hStmt_w; ///> statement for writing data (scada generator)
 	int		hStmt_dat_prepared;  ///>  flag showing if the hStmt_dat handle is ready (prepared)
 	Channel*  lsChan; ///> channel list 
 	unsigned nChan; ///> number of channels
@@ -149,29 +145,39 @@ struct Provider
 	/** Data connection error state*/
 	enum Err {
 		OK,
-        MEM_NOT_ALLOCED, 
+		MEM_NOT_ALLOCED, 
+
 		ENV_NOT_ALLOC,  ///>can not allocate environment handle
 		ENV_CANT_SET_V3,  ///>can not set env handle to v3
 		DBC_NOT_ALLOC,  ///>can not allocate db connection handle
 		DSN_TOO_LONG_OR_NULL,
 		CANT_CONNECT_DB,
 		STMT_NOT_ALLOC,  ///>can not allocate statement handle
+
+		CANT_PREPARE_SQL,
+		CANT_INSERT_SCADA,
 		CANT_LOAD_CHANNELS,
 		UNKNOWN_MSMT_TYPE,
 		DB_CONN_NOT_READY,
+
 		CANT_QUERY_DATA,
 		NO_DATA_FOR_THE_CHANNEL,
 		CANT_PREPARE_QUERY,
+		CANT_RESET_FACT_TAB,
+
+        CANT_FIND_COR_COMP,
 
 		DUMMY_LAST
 	};
 
 	/// Error reporting
-	static void report(Err err, FILE* errfile=stderr);
-	static void report(Err err, TCHAR* arr);
+	static void reportEWI(Err err);
 
-    /// Factory method
-    static Err New(TCHAR* tdsn, Provider** prov_out);
+	/// Factory method
+	/** Connect to the given database and load channel metadata
+	   if an optional Network is provided, mindex field of the channels
+	   will have correct values*/
+	static Err New(TCHAR* tdsn, Provider** prov_out, Network* net = NULL);
 
 	/**  Connect a database */
 	/** There must be two data tables exsited in the db.
@@ -189,8 +195,18 @@ struct Provider
 
 	/** Create channels and load channel information */
 	/**  Load channel information from the "Channels" table in the database
+        if net is not null, mindex of the channels will be looked up
 	*/
-	Err loadChannels(); 
+	Err loadChannels(Network* net); 
+
+	/// Insert Scada records - initialization
+	Err initInsertScada(Tstamp* scada_t0);
+
+	/** Insert scada records*/
+	Err insertScada(int* timeshift, int* chan_key, float* signal);
+
+	/** Reset fact table, clean all scada data*/
+	Err resetFactTab();
 
 	/** Get an observed data point from a channel by db primary key 
 	/**  Obtain a data point at a specified time, if there is no matching time,
@@ -224,14 +240,15 @@ struct Provider
 	TCHAR dat_tab[MAX_TABLE_NAME];  ///> fact table name string, set to "Msmts"
 	TCHAR chan_tab[MAX_TABLE_NAME];  ///> metadata table name string, set to "Channels"
 
-    Provider* next ; ///> next provider in a list
+	Provider* next ; ///> next provider in a list
 
 protected:
-    Provider();
+	Provider();
 };
 
 #define MAX_NET_ID_LEN  255 ///> Network node/link identification string
 
+#define MAX_COMP_TYPE_STR_SIZE 64
 /// Data channel
 /** The struct stores descriptive information about a data channel.
 Data channels must be created and destroyed by Provider::loadChannels(),
@@ -261,19 +278,6 @@ struct Channel
 	Provider*	provider;  ///> data provider
 	int			mindex;  ///> index in the hydraulic network
 
-	///>  the type of measurement in a hydraulic model
-	Network::FieldType  mtype() {
-		switch (type) {
-		case L: return Network::HEAD;  
-		case V: return Network::SETTING;
-		case B: case A: case P: return Network::PRESSURE;
-		case C: return Network::LSTATUS;
-		case F: case Q: case D: return Network::FLOW;
-		default:
-			return Network::UNKNOWN;
-		}
-	}
-
 	DataSource::UnitsType  unit; ///> unit of measurement, needs work here
 	//right now assume channel unit is consistent with network unit
 
@@ -287,6 +291,57 @@ struct Channel
 	Status		status;  ///>  working status of this channel
 
 	Channel*	next;   ///> next channel in a list
+	///  the type of measurement in a hydraulic model
+	Network::FieldType  mtype() {
+		switch (type) {
+		case L: return Network::HEAD;  
+		case V: return Network::SETTING;
+		case B: case A: case P: return Network::PRESSURE;
+		case C: return Network::LSTATUS;
+		case F: case Q: case D: return Network::FLOW;
+		default:
+			return Network::UNKNOWN;
+		}
+	}
+
+	/// fetch the type string of a channel 
+	/**  str must have MAX_COMP_TYPE_STR_SIZE tchars allocated */
+	static TCHAR* ctype(Type ch_type, TCHAR* str) {
+		switch (ch_type) {
+		case A:
+			_tcscpy(str, TEXT("Suction-side pressure of a pump/GPV"));
+			break;
+		case B:  
+			_tcscpy(str, TEXT("Discharge-side pressure of a pump/GPV"));
+			break;
+		case C: 
+			_tcscpy(str, TEXT("On/off status of a pipe/valve"));
+			break;
+		case D:
+			_tcscpy(str, TEXT("Real-time water demand of a junction"));
+			break;
+		case F:
+            _tcscpy(str, TEXT("Flow-rate of a pump"));
+            break;
+		case L: 
+			_tcscpy(str, TEXT("Water levels in a tank/reservoir"));
+			break;
+		case Q:
+			_tcscpy(str, TEXT("Flow rate inside a pipe"));
+			break;
+		case P: 
+			_tcscpy(str, TEXT("Pressure at a junction"));
+			break;
+		case V: 
+			_tcscpy(str, TEXT("Minor headloss coefficient of a TCV/FCV"));
+			break;
+		default:
+			_tcscpy(str, TEXT("Unknown Component"));
+		}
+		return str;
+	}
+
+
 };
 
 

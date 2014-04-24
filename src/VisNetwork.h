@@ -15,7 +15,7 @@ for more details.   */
 #pragma once
 #include "Network.h"
 #include "DataSource.h"
-#include "vtkincludes.h"
+#include "SenmVtkIncs.h"
 
 /// Visuals of EPANET network infrastructure 
 /**The vtkPolyData-typed 2d and 3d network base map can be created. 

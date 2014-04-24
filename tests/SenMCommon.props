@@ -11,7 +11,7 @@
       <SubSystem>NotSet</SubSystem>
     </Link>
     <ClCompile>
-      <AdditionalIncludeDirectories>$(SolutionDir)src;$(SolutionDir)src\SFMT_1.4\;$(SolutionDir)src\rngs\;$(SolutionDir)src\iniParser_3.1\;$(SolutionDir)src\EPANET-lt\;$SolutionDir)src\VTK_5.10.1\;$(SolutionDir)src\clapack_3.2.1\</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)src;$(SolutionDir)src\SFMT_1.4\;$(SolutionDir)src\rngs\;$(SolutionDir)src\iniParser_3.1\;$(SolutionDir)src\EPANET-lt\;$(SolutionDir)src\VTK_5.10.1\Filtering;$(SolutionDir)src\VTK_5.10.1\Rendering;$(SolutionDir)src\VTK_5.10.1\Hybrid;$(SolutionDir)src\VTK_5.10.1\Graphics;$(SolutionDir)src\VTK_5.10.1\Common;$(SolutionDir)src\VTK_5.10.1_gen\;$(SolutionDir)src\VTK_5.10.1_gen\Rendering;$(SolutionDir)src\clapack_3.2.1\</AdditionalIncludeDirectories>
     </ClCompile>
   </ItemDefinitionGroup>
 </Project>

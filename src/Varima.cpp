@@ -22,7 +22,8 @@ Varima::Err Varima::setPara(
 	/* allocate memory */
 	if (p>0) phi = (double*)calloc( n * (p+1), sizeof(double));
 	if (q>0) theta = (double*)calloc( n * (q+1) , sizeof(double));
-	if (d>0) dwts=(int*) calloc( s*d+1, sizeof(int));
+	dwts=(int*) calloc( s*d+1, sizeof(int));
+    dwts[0] = 1;
 
 	mean = (double*)calloc( n, sizeof(double));
 
@@ -42,7 +43,7 @@ Varima::Err Varima::setPara(
 	if (!(mean && ma && mw && mz)) return CANT_ALLOC_MEM;
 	if (p>0 && !phi) return CANT_ALLOC_MEM;
 	if (q>0 && !theta) return CANT_ALLOC_MEM;
-	if (d>0 && !dwts) return CANT_ALLOC_MEM;
+	if (!dwts) return CANT_ALLOC_MEM;
 	if (s==1 && (!cov || !lcov)) return CANT_ALLOC_MEM;
 
 	int i=0;
@@ -100,6 +101,25 @@ Varima::Err Varima::setPara(double* phi_in, double* theta_in, double* cov_in) {
 	return setPara(phi_in, theta_in, cov_in, NULL);
 }
 
+void Varima::reportEWI(Err err) {
+	TCHAR ewiTxts[DUMMY_LAST][MAX_ERR_STRING_SIZE]= {
+        TEXT("OK."),
+        TEXT("Parameters have not been set."),
+        TEXT("Dimension of the model must be a positive integer."),
+        TEXT("Could not allocate memory."),
+        TEXT("The covariance matrix is not positively definitive, try using two independent models."),
+        TEXT("The pointer is invalid."),
+        TEXT("Could not generate a vector."),
+        TEXT("Not enough data to initialize the model."),
+        TEXT("Log of zero when initializating."),
+	};
+
+	TCHAR txt[MAX_ERR_STRING_SIZE+MAX_ERR_PREFIX_SIZE];
+    _stprintf(txt, TEXT("<ARI>Varima:%s"), ewiTxts[err]);
+
+    ewi(txt, threadN);
+}
+
 Varima::~Varima() {
 	free(phi); 
 	free(theta);
@@ -112,62 +132,94 @@ Varima::~Varima() {
 	free(mz);
 }
 
-Varima::Err Varima::initStateG(Rvgs* rg_in, double** z0, int size) {
+Varima::Err Varima::initStateG(Rvgs* rg_in, double** z0, int size, int bLog) {
+    if (z0 == NULL) { //set random number generator and exit
+        Varima* inner = this;
+        while (inner->s!=1) inner=inner->in;
+        inner->rg = rg_in;
+		return OK;
+	}
+    double* tempZ0 = (double*)calloc(n*size, sizeof(double));
+    for (int i =0; i<n; ++i) 
+        for (int j = 0; j < size; ++j) {
+            if (bLog) { 
+                if (z0[i][j] <= 0) return LOG_INIT_WITH_ZERO;
+				else tempZ0[i*size + j] = log(z0[i][j]);
+			} else {
+                tempZ0[i*size + j] = z0[i][j];
+			}
+		}
+    Err err = initStateG(rg_in, tempZ0, size);
+    free(tempZ0);
+    return err;
+}
+
+Varima::Err Varima::initStateG(Rvgs* rg_in, double* z0, int size) {
+    // This initialization method introduces errors for MA models
 	// z0 is a pointer to rows
 	if (rg_in == NULL) return INVALID_PTR;
+
 	// set random number generator for the inner most model
-	Varima* inner = this;
-	while (inner->s!=1) inner=inner->in;
-	inner->rg = rg_in;
+    if (in == NULL) rg = rg_in; //inner-most model
 
 	//if ( z0 == NULL) return OK; // don't init
 
+    if (size < s*d + s*p + 1) return INIT_SIZE_TOO_SMALL;
+
+
 	int j; //dimension iterator
-	int k; //time iterator
-	int kc;  //column iterator
+	int k; //time iterator - varima buffer
+	int kc;  //column iterator - source data
+    int h; // linear combination iterator
+    // temporary storage of intermedite init data
+    int nctpmw = size-s*d;
+    int nctpma = size-s*d-s*p;
+    double* tpmw = (double*)calloc(n*nctpmw, sizeof(double));
+    double* tpma = (double*)calloc(n*nctpma, sizeof(double));
 
-	if (z0) // has inital matrix
-		for (j=0; j<n; ++j)  // fill initial value with very last values
-			for (k=ncmz-1, kc=size-1; k>=0 && kc>=0; --k, --kc) 
-				mz[j*ncmz + k] = z0[j][kc];
+    for (j = 0; j<n; ++j) {
+        // fill z-buffer
+        for (k = ncmz-1, kc=size-1; k>= 0; --k, --kc) 
+            mz[j*ncmz+k] = z0[j*size+kc];
 
+        // fill w-buffer
+        for (k=1; k<= size-s*d; ++k) {
+            double tpw = 0;
+            for (h=0; h<=s*d; ++h) tpw += dwts[h]*z0[j*size+size-k-h];
+            tpmw[j*nctpmw + nctpmw-k] = tpw;
+            if (ncmw-k>=0) mw[j*ncmw+ncmw-k] = tpw;
+		}
 
-	for (m=0; m < INIT_CYCLES * (p+1) * (q+1) * (d+1);) 
-		if (generate(NULL)) return GEN_ERROR;
+        // fill a-buffer
+        for (k=1; k<= size-s*d-s*p; ++k) {
+            double tpa = 0;
+            for (h=0; h<=p; ++h) tpa += phi[h]*tpmw[j*nctpmw+nctpmw-k-h*s];
+            tpma[j*nctpma + nctpma-k] = tpa;
+            if (ncma-k>=0) ma[j*ncma+ncma-k] = tpa;
+		}
+	}
 
-	return OK;
-}
-
-//Varima::Err Varima::initStateLogG(Rvgs* rg_in, double** z0, int size) {
-//	// z0 is a pointer to rows
-//	if (rg_in == NULL) return INVALID_PTR;
-
-//	// set random number generator for the inner most model
-//	Varima* inner = this;
-//	while (inner->s!=1) inner=inner->in;
-//	inner->rg = rg_in;
-
-//	//if ( z0 == NULL) return OK; // don't init
-
-//	int j; //dimension iterator
-//	int k; //time iterator
-//	int kc;  //column iterator
+    Err err;
+	if (in!=NULL) err = in->initStateG(rg_in, tpma, nctpma);
+    free(tpmw);
+    free(tpma);
 
 //	if (z0) // has inital matrix
 //		for (j=0; j<n; ++j)  // fill initial value with very last values
 //			for (k=ncmz-1, kc=size-1; k>=0 && kc>=0; --k, --kc) {
-//				if (z0[j][kc] <= 0) 
+//                if (bLog == 0)
+//                    mz[j*ncmz + k] = z0[j][kc];
+//				else if (z0[j][kc] <= 0)  // log(z0) init
 //					mz[j*ncmz + k] = LOG_OF_ZERO;
 //				else
 //					mz[j*ncmz + k] = log(z0[j][kc]);
-//			};
+//			}
 
+//	for (m=0; m < INIT_CYCLES * (p+1) * (q+1) * (d+1);) 
+//		if (generate(NULL)) return GEN_ERROR;
 
-//    for (m=0; m < INIT_CYCLES * (p+1) * (q+1) * (d+1);) 
-//        if (generate(NULL)) return GEN_ERROR;
-
-//    return OK;
-//}
+	return OK;
+}
 
 
 Varima::Err  Varima::generate(double* z_out) {
@@ -187,7 +239,7 @@ Varima::Err  Varima::generate(double* z_out) {
 		for (j=0; j<n; ++j) tpa[j]=rg->Normal(0,1); //get iid ran.vec
 		doublereal alpha(1), beta(0); 
 		integer incx=1;
-		// use cholesky lower-triangular matrix to generate correlated vector white noise
+		// use lcov matrix to generate correlated vector white noise
 		dgemv_("N", (integer*)&n, (integer*)&n, &alpha, lcov, (integer*)&n,
 			tpa, &incx, &beta, &ma[pma], (integer*)&ncma); // L matrix * vector
 	} else {// use embeded model

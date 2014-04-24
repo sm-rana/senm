@@ -100,6 +100,14 @@ static unsigned Pop_curChain;
 static unsigned Pop_curDim;
 static Population* Pop_curInstance;
 
+//---- internal functions ----
+// comparison within a chain
+static int Pop_chainCmp(const void* p1, const void* p2);
+
+// comparison in total pop
+static int Pop_TchainCmp(const void* p1, const void* p2);
+
+
 void Pop_calc(Population* pop) {
 	if (pop==NULL) return;
 
@@ -314,7 +322,8 @@ void Pop_report(Population* pop, FILE* target) {
 	ReleaseSRWLockShared(&pop->statLoc);
 }
 
-void Pop_del(Population* pop) {
+void Pop_del(Population** ppop) {
+    Population* pop = (*ppop);
 	unsigned iw=0;
 	for (; iw<N_WORKERS; ++iw) {
 		free(pop->h[iw]);
@@ -343,5 +352,7 @@ void Pop_del(Population* pop) {
 	free(pop->tclU1);
 	free(pop->tclL2);
 	free(pop->tclU2);
+
+    (*ppop) = NULL;
 
 }

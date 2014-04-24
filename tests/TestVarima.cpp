@@ -21,7 +21,7 @@ to generate several 1-D vector series. Statistics are reported */
 #include "Varima.h"
 
 //chain size
-#define TEST_VARIMA_M  1000 * 1000  
+#define TEST_VARIMA_M  100 * 6  
 
 struct Arg {
 	unsigned iw;
@@ -34,6 +34,7 @@ unsigned WINAPI workVarimaGeneration(void* arg) {
 	Arg* parg =  (Arg*) arg; //worker/chain id
 	double* z = new double[parg->dim1];
 
+	parg->var->threadN = parg->iw;
 	unsigned im, id;
 	for (im = 0; im < TEST_VARIMA_M; ++im) {
 		parg->var->generate(z);
@@ -54,7 +55,7 @@ unsigned WINAPI workVarimaGeneration(void* arg) {
 
 int main() {
 
-	printf("Test 1: non-seasonal arima\n");
+	ewi(TEXT("Test 1: non-seasonal arima\n"));
 
 	double phi_in[] = {1.28, -0.4, 
 		0.7, 0,
@@ -82,17 +83,20 @@ int main() {
         worker[iw] = (void*)_beginthreadex(NULL, 0, 
 			workVarimaGeneration, (void*)parg, 0, NULL);
 		if (worker[iw] == NULL) {
-			printf("Can't create thread.\n"); return 2;}
+			ewi(TEXT("Can't create thread.\n")); return 2;}
 	}
 
-    DWORD reason; //reason main thread is executed
+    DWORD reason; //the reason why main thread is awaken
     do {
 		reason = WaitForMultipleObjects(
 			N_WORKERS, worker, TRUE, 4*1000); // wait 4 seconds
-        printf("Calc stats...\n");
+        ewi(TEXT("Calc stats...\n"));
         Pop_calc(pop1);
         Pop_report(pop1);
         fflush(stdout);
 	} while (reason == WAIT_TIMEOUT);
+
+    Pop_del(&pop1);
+    return 0;
 
 }

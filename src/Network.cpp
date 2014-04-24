@@ -9,11 +9,6 @@
 
 Network* Network::singleton = NULL;
 
-const double Network::_PI = 3.1415926;
-const double Network::_TINY = 1E-6;
-const double Network::_BIG = 1E10;
-const double Network::Viscos = 1.1E-5;
-
 //strings of input file's section names, must be consistent with
 //the enum type SectNum
 char* Network::SectTxt[] = {
@@ -87,8 +82,8 @@ LPCTSTR Network::problemText(ErrorCode ec) {
 		_tcscpy(_strProblem, TEXT("There are no junctions specified in the network."));
 		break;
 	case NO_TANKS:
-		_tcscpy(_strProblem, TEXT("There are no tanks or reservoirs in the network.")):
-			break;
+		_tcscpy(_strProblem, TEXT("There are no tanks or reservoirs in the network."));
+		break;
 	case 		INPUT_LINE_TOO_LONG :
 	case 		SYNTAX_ERR_OF_SECT_NAME :
 	case 		SYNTAX_ERR_OF_JUNC :
@@ -120,8 +115,8 @@ LPCTSTR Network::problemText(ErrorCode ec) {
 		_tcscpy(_strProblem, TEXT("Component not defined."));
 		break;
 	case 		NODE_COORDINATES_UNDEFINED: 
-		_tcscpy(_strProblem, TEXT("Coordinates of the nodes are not defined. "
-			"This will not impact hydraulic simulation but 3d visuals can't be built."));
+		_tcscpy(_strProblem, TEXT("Coordinates of the nodes are not defined. ")
+			TEXT("This will not impact hydraulic simulation but 3d visuals can't be built.") );
 		break;
 	case  LINK_IS_A_LOOP:
 		_tcscpy(_strProblem, TEXT("Some link is a loop - cannot build network."));
@@ -149,8 +144,8 @@ LPCTSTR Network::problemText(WarnCode wc) {
 	switch (wc) {
 
 	case PBV_SPECIFIED_IN_INP:
-		_tcscpy(_strProblem, TEXT("PBV cannot be modeled in SenM. it will"
-			"be replaced with a CV"));
+		_tcscpy(_strProblem, TEXT("PBV cannot be modeled in SenM. it will")
+			TEXT("be replaced with a CV"));
 		break;
 	default:
 		_tcscpy(_strProblem, TEXT(""));
@@ -200,8 +195,10 @@ Network::ErrorCode Network::getNetwork(LPCTSTR inpfilename, Network **net) {
 	singleton->loadInp(infile);
 	fclose(infile);
 
-	_ftprintf(stderr, TEXT("[0]Try loading the network in file (%s).\n"
-		"%s \n"), inpfilename, singleton->problemText(singleton->_ecCur));
+	TCHAR tmptxt[MAX_ERR_STRING_SIZE];
+    _stprintf(tmptxt, TEXT("Try loading the network in file (%s).\n%s \n"), 
+		inpfilename, singleton->problemText(singleton->_ecCur));
+    ewi(tmptxt);
 	if (singleton->_lineEc >0)
 		_ftprintf(stderr, TEXT("Possible error in Line %d\n"), 
 		singleton->_lineEc);
@@ -263,6 +260,7 @@ Network::~Network()
 	}
 
 	free(Degree);
+    free(ref_demand);
 
 	/* free memory for node and link hash table*/
 	for (HTIt it = Nht.begin(); it!=Nht.end(); ++it) {
@@ -497,8 +495,17 @@ Network::ErrorCode Network::loadInp(FILE* InFile) {
 		Nusers = 0;
 		Nemitters = 0;
 		for (int ii = 1; ii<=MaxJuncs; ++ii) {
-			if (Node[ii].D && Node[ii].D->Base >0) Nusers++; 
+			if (Node[ii].D && Node[ii].D->Base >0) {
+				Nusers++; 
+			}
 			if (Node[ii].Ke  >0) Nemitters++; 
+		}
+        ref_demand = (float*)calloc(Nusers, sizeof(float));
+        int iuser=0;
+		for (int ii = 1; ii<=MaxJuncs; ++ii) {
+			if (Node[ii].D && Node[ii].D->Base >0) {
+                ref_demand[iuser++] = Node[ii].D->Base;
+			}
 		}
 
 		// build quick indexing arrays 
@@ -508,7 +515,7 @@ Network::ErrorCode Network::loadInp(FILE* InFile) {
 		int iPG = 0; 
 		int iCRSV = 0;
 		int iTFV = 0;
-		for (int ii = 1; ii<MaxLinks; ++ii) {
+		for (int ii = 1; ii<=MaxLinks; ++ii) {
 			switch (Link[ii].Type) {
 			case CV: case PRV: case PSV:
 				tCRSV[iCRSV++] = ii; break;
@@ -517,6 +524,7 @@ Network::ErrorCode Network::loadInp(FILE* InFile) {
 			case TCV: case FCV:
 				tTFV[iTFV++] = ii; break;
 			default: //do nothing
+				continue;
 			}
 		}
 
@@ -1133,17 +1141,17 @@ void  Network::convertunits()
 
 		else
 		{      /* For flow control valves, convert flow setting    */
-      /* while for other valves convert pressure setting  */
-         Link[k].Diam /= Ucf[DIAM];
-         Link[k].Km = 0.02517*Link[k].Km/pow(Link[k].Diam, 4);      
-         if (Link[k].Kc != 0) switch (Link[k].Type)
-         {
-//            case FCV: Link[k].Kc /= Ucf[FLOW]; break;
-            case PRV:
-            case PSV:
-            case PBV: Link[k].Kc /= Ucf[PRESSURE]; break;
-         }
-	}
+			/* while for other valves convert pressure setting  */
+			Link[k].Diam /= Ucf[DIAM];
+			Link[k].Km = 0.02517*Link[k].Km/pow(Link[k].Diam, 4);      
+			if (Link[k].Kc != 0) switch (Link[k].Type)
+			{
+				//            case FCV: Link[k].Kc /= Ucf[FLOW]; break;
+			case PRV:
+			case PSV:
+			case PBV: Link[k].Kc /= Ucf[PRESSURE]; break;
+			}
+		}
 
 	}
 
@@ -1831,6 +1839,7 @@ Network::ErrorCode  Network::tankdata()
 
 	char*	tank_name = new char[MAX_ID];
 	strncpy_s(tank_name, MAX_ID, Tok[0], MAX_ID-1);
+	strncpy_s(Node[i].ID, MAX_ID, Tok[0], MAX_ID-1);
 
 	if (!(Nht.insert(HTPair(tank_name, i))).second)  //id exists
 		return(NODE_ID_EXISTS);
@@ -1932,6 +1941,7 @@ Network::ErrorCode Network::pipedata()
 	//Prepare a hash table entry
 	char* pipe_name = new char[MAX_ID];
 	strncpy_s(pipe_name, MAX_ID, Tok[0], MAX_ID-1);
+	strncpy_s(Link[Nlinks].ID, MAX_ID, Tok[0], MAX_ID-1);
 
 	if (!(Lht.insert(HTPair(pipe_name, Nlinks))).second)  //id exists
 		return(LINK_ID_EXISTS);
@@ -2033,6 +2043,7 @@ Network::ErrorCode  Network::pumpdata()
 	//Prepare a hash table entry
 	char* pump_name = new char[MAX_ID];
 	strncpy_s(pump_name, MAX_ID, Tok[0], MAX_ID-1);
+	strncpy_s(Link[Nlinks].ID, MAX_ID, Tok[0], MAX_ID-1);
 	if (!(Lht.insert(HTPair(pump_name, Nlinks))).second)  //id exists
 		return(LINK_ID_EXISTS);
 
@@ -2144,6 +2155,7 @@ Network::ErrorCode  Network::valvedata()
 	//Prepare a hash table entry
 	char* valve_name = new char[MAX_ID];
 	strncpy_s(valve_name, MAX_ID, Tok[0], MAX_ID-1);
+	strncpy_s(Link[Nlinks].ID, MAX_ID, Tok[0], MAX_ID-1);
 	if (!(Lht.insert(HTPair(valve_name, Nlinks))).second)  //id exists
 		return(LINK_ID_EXISTS);
 
@@ -2329,6 +2341,7 @@ Network::ErrorCode  Network::demanddata()
 	if (jit == Nht.end() )       return(NODE_UNDEFINED);
 
 	if (jit->second > Njuncs) return(NODE_UNDEFINED);
+	j = jit->second;
 	if (n >= 3)
 	{
 		pat = findID(Tok[2],Patlist);
@@ -2758,8 +2771,50 @@ int  Network::getfloat(char *s, double *y)
 	return(1);
 }
 
+TCHAR* Network::typeStr(ComponentType ctype, TCHAR* str) {
+    switch (ctype) {
+	case JUNC:
+        _tcscpy(str, TEXT("Junction"));
+        break;
+	case RESERV:
+        _tcscpy(str, TEXT("Reservoir/water source"));
+        break;
+	case TANK:
+        _tcscpy(str, TEXT("Water Storage/tank"));
+        break;
+	case CV:
+        _tcscpy(str, TEXT("Check valve"));
+        break;
+	case PIPE:
+        _tcscpy(str, TEXT("Pipe"));
+        break;
+	case PUMP:
+        _tcscpy(str, TEXT("Pump"));
+        break;
+	case PRV:
+        _tcscpy(str, TEXT("Pressure reduce valve"));
+        break;
+	case PSV:
+        _tcscpy(str, TEXT("PRessure sustain valve"));
+        break;
+	case FCV:
+        _tcscpy(str, TEXT("Flow control valve"));
+        break;
+	case TCV:
+        _tcscpy(str, TEXT("Throttle control valve"));
+        break;
+	case GPV:
+        _tcscpy(str, TEXT("General purpose valve"));
+        break;
+	default:
+        _tcscpy(str, TEXT("Unknown component"));
+	}
+    return str;
+}
+
 // report network info.
 void Network::report() {
+	USES_CONVERSION;
 	Network* s = singleton;
 	if (s == NULL) {
 		_tprintf(TEXT("Network not created.\n"));
@@ -2773,14 +2828,13 @@ void Network::report() {
 		return;
 	}
 
-	_tprintf(TEXT(
-		"EPANET NETWORK SUMMARY:\n"
-		"\t Total nodes: \t %d, among which: \n"
-		"\t\t Junctions: %d [Index 1 ~ %d] \n"
-		"\t\t\t Junc. w/ emitter (water leaks): %d), \n"
-		"\t\t\t Junc. w/ demand (water users): %d), \n"
-		"\t\t Tanks/Reservoirs: %d [Index %d ~ %d], listed as: \n"
-		), s->MaxNodes, s->MaxJuncs, s->MaxJuncs, s->Nemitters,  s->Nusers,
+	_tprintf(TEXT( "EPANET NETWORK SUMMARY:\n")
+		TEXT(" Total nodes: \t %d, among which: \n")
+		TEXT("   Junctions: %d [Index 1 ~ %d] \n")
+		TEXT("     Junc. w/ emitter (water leaks): %d), \n")
+		TEXT("     Junc. w/ demand (water users): %d), \n")
+		TEXT("     Tanks/Reservoirs: %d [Index %d ~ %d], listed as: \n")
+		, s->MaxNodes, s->MaxJuncs, s->MaxJuncs, s->Nemitters,  s->Nusers,
 		s->MaxTanks, s->MaxJuncs+1, s->MaxNodes);
 
 	TCHAR utxt[64]; // unit text 
@@ -2791,23 +2845,20 @@ void Network::report() {
 		int inode = aTank.Node; 
 		Snode aNode = s->Node[inode];
 		unitText(ELEV, s->Unitsflag, utxt);
-		_tprintf(TEXT(
-			"\t\t\t Tank @ Node %d <%s>: \n"
-			"\t\t\t\t Elev: %6.2f %s, MinLevel: %6.2f %s, MaxLevel: %6.2f %s\n"
-			), inode, aNode.ID, 
+		_tprintf(TEXT("        Tank @ Node %d <%s>: ")
+			TEXT("Elev: %6.2f %s, Level Range: %6.2f to %6.2f %s\n"),
+			inode, A2T(aNode.ID), 
 			aNode.El * s->Ucf[ELEV], utxt, 
-			aTank.Hmin * s->Ucf[ELEV], utxt,
+			aTank.Hmin * s->Ucf[ELEV], 
 			aTank.Hmax * s->Ucf[ELEV], utxt
 			);
 	}
-	_tprintf(TEXT("\t\t Channel [L] needed for each tank/reservoir.\n"));
+	_tprintf(TEXT("  Channel [L] needed for each tank/reservoir.\n"));
 
-	_tprintf(TEXT(
-		"\t Total links: \t %d, among which: \n"
-		"\t\t Pipes: %d [Index 1 ~ %d] \n"
-		"\t\t Check Valves, PSVs and PRVs listed as: \n"),
-		s->MaxLinks, 
-		s->MaxPipes, s->MaxPipes);
+	_tprintf(TEXT( " Total links: \t %d, among which: \n")
+		TEXT("   Pipes: %d [Index 1 ~ %d] \n")
+		TEXT("   Check Valves, PSVs and PRVs listed as: \n"),
+		s->MaxLinks, s->MaxPipes, s->MaxPipes);
 
 	// CRSV list
 
@@ -2816,58 +2867,59 @@ void Network::report() {
 		Slink* aLink = &(s->Link[linkno]);
 		switch (aLink->Type) {
 		case CV:
-			_tprintf(TEXT(
-				"\t\t\t Check Valve @ Link %d <%s>, Node %d <%s> to %d <%s>\n"), 
-				linkno, aLink->ID, 
-				aLink->N1, s->Node[aLink->N1].ID,
-				aLink->N2, s->Node[aLink->N2].ID
+			_tprintf(TEXT("     Check Valve @ Link %d <%s>, Node %d <%s> to %d <%s>\n"), 
+				linkno, A2T(aLink->ID), 
+				aLink->N1, A2T(s->Node[aLink->N1].ID),
+				aLink->N2, A2T(s->Node[aLink->N2].ID)
 				);
 			break;
 
 		case PSV:
 			unitText(PRESSURE, s->Pressflag, utxt);
-			_tprintf(TEXT(
-				"\t\t\t PSV @ Link %d <%s>: "
-				"Set Junc. %d Pressure > %6.2f %s when possible.\n"),
-				linkno, aLink->ID,
+			_tprintf(TEXT( "    PSV @ Link %d <%s>: ")
+				TEXT("Set Junc. %d's Pres. > %6.2f %s when possible.\n"),
+				linkno, A2T(aLink->ID),
 				aLink->N1, aLink->Kc *s->Ucf[PRESSURE], utxt
 				);
 			break;
 
 		case PRV:
 			unitText(PRESSURE, s->Pressflag, utxt);
-			_tprintf(TEXT(
-				"\t\t\t PSV @ Link %d <%s>: "
-				"Set Junc. %d Pressure < %6.2f %s when possible.\n"),
-				linkno, aLink->ID,
+			_tprintf(TEXT( "     PSV @ Link %d <%s>: ")
+				TEXT("Set Junc. %d's Pres. < %6.2f %s when possible.\n"),
+				linkno, A2T(aLink->ID),
 				aLink->N2, aLink->Kc *s->Ucf[PRESSURE], utxt
 				);
 			break;
 		}
 	}
 
-	_tprintf(TEXT("\t\t Pumps and GPVs listed as: \n"));
+	if (s->nCRSV) _tprintf(TEXT("   Pumps and GPVs listed as: \n"));
 
 	// Pump/GPV list
-	for (int iPG = 0; iPG<s->nCRSV; ++iPG) {
+	for (int iPG = 0; iPG<s->nPumpGPV; ++iPG) {
 		int linkno = s->tPumpGPV[iPG];
 		Slink* aLink = &(s->Link[linkno]);
 		switch (aLink->Type) {
 		case PUMP:
 			//			int pumpindex = int(aLink->Diam); // this is what epanet does this
-			_tprintf(TEXT(
-				"\t\t\t Pump @ Link %d <%s>:\n"),  linkno, aLink->ID);
+			_tprintf(TEXT("     Pump @ Link %d <%s>, Node %d <%s> to %d <%s>\n"), 
+				linkno, A2T(aLink->ID), 
+				aLink->N1, A2T(s->Node[aLink->N1].ID),
+				aLink->N2, A2T(s->Node[aLink->N2].ID)
+				);
 			break;
-
 		case GPV:
-			_tprintf(TEXT(
-				"\t\t\t GPV @ Link %d <%s>: \n"),
-				linkno, aLink->ID );
+			_tprintf(TEXT("     GPV @ Link %d <%s>, Node %d <%s> to %d <%s>\n"), 
+				linkno, A2T(aLink->ID), 
+				aLink->N1, A2T(s->Node[aLink->N1].ID),
+				aLink->N2, A2T(s->Node[aLink->N2].ID)
+				);		
 			break;
 		}
 	}
 
-	_tprintf(TEXT("\t\t Channel [F] and [B] needed for each pump/GPV.\n"));
+	if (s->nCRSV) _tprintf(TEXT("   Channel [F] and [B] needed for each pump/GPV.\n"));
 
 	// TCV/FCV list
 	for (int iTFV = 0; iTFV< s->nTFV; ++iTFV) {
@@ -2877,19 +2929,19 @@ void Network::report() {
 
 		switch (aLink->Type) {
 		case TCV:
-			_tprintf(TEXT("\t\t\t TCV @ Link %d <%s>:"
-				"minor headloss adjustable.\n"), linkno, aLink->ID);
+			_tprintf(TEXT("     TCV @ Link %d <%s>:")
+				TEXT("minor headloss adjustable.\n"), linkno, A2T(aLink->ID));
 			break;
 		case FCV:
-			_tprintf(TEXT("\t\t\t FCV @ Link %d <%s>:"
-				"Adjust minor headloss so flowrate maintains %6.2f %s.\n"), 
-				linkno, aLink->ID,
+			_tprintf(TEXT("     FCV @ Link %d <%s>:")
+				TEXT("Adjust minor headloss so flowrate maintains %6.2f %s.\n"), 
+				linkno, A2T(aLink->ID),
 				aLink->Kc * s->Ucf[FLOW], utxt);
 			break;
 		}
 	}
 
-	_tprintf(TEXT("\t\t Channel [V] needed for each TCV/FCV.\n"));
+	if (s->nTFV) _tprintf(TEXT("   Channel [V] needed for each TCV/FCV.\n"));
 
 	// report warning information
 	s->reportWarns();
@@ -2900,11 +2952,12 @@ void Network::reportWarns() {
 	TCHAR warnTxt[1024];
 	std::list<Warn>::iterator iWarn;
 
-	_tprintf(TEXT("Network Warnings:"));
+	_tprintf(TEXT("Network Warnings: "));
 	for (iWarn=_lsWC.begin(); iWarn!=_lsWC.end(); ++iWarn) {
 
 		_tprintf(TEXT("Line %d: %s \n"), iWarn->first, problemText(iWarn->second));
 	}
+    _tprintf(TEXT("\n"));
 	return;
 }
 //		"Network Info:\n\tTotal Nodes: %d, Tanks+Reservoirs: %d, Junctions: %d\n\tTotal Links: %d, Pipes: %d, Pumps: %d, Valves: %d\n"),
@@ -2918,14 +2971,14 @@ Network::ErrorCode Network::unitText(FieldType type, UnitsType unit, TCHAR* str,
 		switch (unit) {
 		case SI: 
 			switch (al) {
-			case SHORT: _tcscpy(str, TEXT("m")); break;
-			case FULL: _tcscpy(str, TEXT("Meter(s)")); break;
+			case UNIT_SHORT: _tcscpy(str, TEXT("m")); break;
+			case UNIT_FULL: _tcscpy(str, TEXT("Meter(s)")); break;
 			}
 			break;
 		case US:
 			switch (al) {
-			case SHORT: _tcscpy(str, TEXT("ft")); break;
-			case FULL: _tcscpy(str, TEXT("Feet")); break;
+			case UNIT_SHORT: _tcscpy(str, TEXT("ft")); break;
+			case UNIT_FULL: _tcscpy(str, TEXT("Feet")); break;
 			}
 			break;
 		default: // unkown unit system
@@ -2937,14 +2990,14 @@ Network::ErrorCode Network::unitText(FieldType type, UnitsType unit, TCHAR* str,
 		switch (unit) {
 		case SI:
 			switch (al) {
-			case SHORT: _tcscpy(str, TEXT("mm")); break;
-			case FULL: _tcscpy(str, TEXT("Millimeter(s)")); break;
+			case UNIT_SHORT: _tcscpy(str, TEXT("mm")); break;
+			case UNIT_FULL: _tcscpy(str, TEXT("Millimeter(s)")); break;
 			}
 			break;
 		case US:
 			switch (al) {
-			case SHORT: _tcscpy(str, TEXT("in")); break;
-			case FULL: _tcscpy(str, TEXT("Inch(es)")); break;
+			case UNIT_SHORT: _tcscpy(str, TEXT("in")); break;
+			case UNIT_FULL: _tcscpy(str, TEXT("Inch(es)")); break;
 			}
 			break;
 		default:
@@ -2956,14 +3009,14 @@ Network::ErrorCode Network::unitText(FieldType type, UnitsType unit, TCHAR* str,
 		switch (unit) {
 		case SI:
 			switch (al) {
-			case SHORT: _tcscpy(str, TEXT("m/s")); break;
-			case FULL: _tcscpy(str, TEXT("Meters per second")); break;
+			case UNIT_SHORT: _tcscpy(str, TEXT("m/s")); break;
+			case UNIT_FULL: _tcscpy(str, TEXT("Meters per second")); break;
 			}
 			break;
 		case US:
 			switch (al) {
-			case SHORT: _tcscpy(str, TEXT("fps")); break;
-			case FULL: _tcscpy(str, TEXT("Feet per second")); break;
+			case UNIT_SHORT: _tcscpy(str, TEXT("fps")); break;
+			case UNIT_FULL: _tcscpy(str, TEXT("Feet per second")); break;
 			}
 			break;
 		default:
@@ -2993,68 +3046,68 @@ Network::ErrorCode Network::unitText(FieldType type, FlowUnitsType unit, TCHAR* 
 	switch (unit) {
 	case CFS:
 		switch (al) {
-		case SHORT: _tcscpy(str, TEXT("cfs")); break;
-		case FULL: _tcscpy(str, TEXT("Cubic feet per second")); break;
+		case UNIT_SHORT: _tcscpy(str, TEXT("cfs")); break;
+		case UNIT_FULL: _tcscpy(str, TEXT("Cubic feet per second")); break;
 		} 
 		break;
 	case GPM: 
 		switch (al) {
-		case SHORT: _tcscpy(str, TEXT("gpm")); break;
-		case FULL: _tcscpy(str, TEXT("Gallons per minute")); break;
+		case UNIT_SHORT: _tcscpy(str, TEXT("gpm")); break;
+		case UNIT_FULL: _tcscpy(str, TEXT("Gallons per minute")); break;
 		}
 		break;
 	case MGD:
 		switch (al) {
-		case SHORT: _tcscpy(str, TEXT("mgd")); break;
-		case FULL: _tcscpy(str, TEXT("Million gallons per day")); break;
+		case UNIT_SHORT: _tcscpy(str, TEXT("mgd")); break;
+		case UNIT_FULL: _tcscpy(str, TEXT("Million gallons per day")); break;
 		}
 		break;
 	case IMGD:
 		switch (al) {
-		case SHORT: _tcscpy(str, TEXT("imgd")); break;
-		case FULL: _tcscpy(str, TEXT("Imperial miilion gallons per day")); break;
+		case UNIT_SHORT: _tcscpy(str, TEXT("imgd")); break;
+		case UNIT_FULL: _tcscpy(str, TEXT("Imperial miilion gallons per day")); break;
 		}
 		break;
 
 	case AFD:
 		switch (al) {
-		case SHORT: _tcscpy(str, TEXT("afd")); break;
-		case FULL: _tcscpy(str, TEXT("Acre-feet per day")); break;
+		case UNIT_SHORT: _tcscpy(str, TEXT("afd")); break;
+		case UNIT_FULL: _tcscpy(str, TEXT("Acre-feet per day")); break;
 		}
 		break;
 
 	case LPS:
 		switch (al) {
-		case SHORT: _tcscpy(str, TEXT("L/s")); break;
-		case FULL: _tcscpy(str, TEXT("Liters per second")); break;
+		case UNIT_SHORT: _tcscpy(str, TEXT("L/s")); break;
+		case UNIT_FULL: _tcscpy(str, TEXT("Liters per second")); break;
 		}
 		break;
 
 	case LPM:
 		switch (al) {
-		case SHORT: _tcscpy(str, TEXT("L/m")); break;
-		case FULL: _tcscpy(str, TEXT("Liters per second")); break;
+		case UNIT_SHORT: _tcscpy(str, TEXT("L/m")); break;
+		case UNIT_FULL: _tcscpy(str, TEXT("Liters per second")); break;
 		}
 		break;
 
 	case MLD:
 		switch (al) {
-		case SHORT: _tcscpy(str, TEXT("*1e6 L/d")); break;
-		case FULL: _tcscpy(str, TEXT("Million liters per day")); break;
+		case UNIT_SHORT: _tcscpy(str, TEXT("*1e6 L/d")); break;
+		case UNIT_FULL: _tcscpy(str, TEXT("Million liters per day")); break;
 		}
 		break;
 
 	case CMH:
 		switch (al) {
-		case SHORT: _tcscpy(str, TEXT("m3/h")); break;
-		case FULL: _tcscpy(str, TEXT("Cublic meters per hour")); break;
+		case UNIT_SHORT: _tcscpy(str, TEXT("m3/h")); break;
+		case UNIT_FULL: _tcscpy(str, TEXT("Cublic meters per hour")); break;
 		}
 		break;
 
 	case CMD:
 		switch (al) {
-		case SHORT: _tcscpy(str, TEXT("m3/d")); break;
-		case FULL: _tcscpy(str, TEXT("Cubic meters per day")); break;
+		case UNIT_SHORT: _tcscpy(str, TEXT("m3/d")); break;
+		case UNIT_FULL: _tcscpy(str, TEXT("Cubic meters per day")); break;
 		}
 		break;
 
@@ -3075,20 +3128,20 @@ Network::ErrorCode Network::unitText(FieldType type, PressUnitsType unit, TCHAR*
 	switch (unit) {
 	case PSI:
 		switch (al) {
-		case SHORT: _tcscpy(str, TEXT("psi")); break;
-		case FULL: _tcscpy(str, TEXT("Pounds per square inch")); break;
+		case UNIT_SHORT: _tcscpy(str, TEXT("psi")); break;
+		case UNIT_FULL: _tcscpy(str, TEXT("Pounds per square inch")); break;
 		}
 		break;
 	case KPA:
 		switch (al) {
-		case SHORT: _tcscpy(str, TEXT("kPa")); break;
-		case FULL: _tcscpy(str, TEXT("Kilo Pascals")); break;
+		case UNIT_SHORT: _tcscpy(str, TEXT("kPa")); break;
+		case UNIT_FULL: _tcscpy(str, TEXT("Kilo Pascals")); break;
 		}
 		break;
 	case METERS:
 		switch (al) {
-		case SHORT: _tcscpy(str, TEXT("m")); break;
-		case FULL: _tcscpy(str, TEXT("Meter(s)")); break;
+		case UNIT_SHORT: _tcscpy(str, TEXT("m")); break;
+		case UNIT_FULL: _tcscpy(str, TEXT("Meter(s)")); break;
 		}
 		break;
 	default:

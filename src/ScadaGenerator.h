@@ -12,189 +12,150 @@ GNU General Public License v2 (http://www.gnu.org/licenses/gpl-2.0.html)
 for more details.   */
 
 #pragma once
+
+#include <tchar.h>
 #include <process.h>
 #include "DataSource.h"
 #include "Varima.h"
-#include "vtkIncludes.h"
-#include <tchar.h>
+#include "SenmCoreIncs.h"
+#include "toolkit.h"
+#include "types.h"
+#include "funcs.h"
 
-class ScadaGenerator: public Provider {
+#ifdef _DEBUG
+#define debug 1
+#else
+#define debug 0
+#endif
 
-	/* A ScadaGenerator fills the database with generated SCADA data 
-from a network file and pre-defined temporal and/or spatial correlations
-of water demands */
+#define SG_MAX_FILE_PATH  255 ///> max number of characters in a file path
+#define SG_MAX_ERR_TEXT 512  ///> max size of error text
 
-public:  /* public definitions */
-	enum Err {  /* Error codes*/
-		OK,
-		ENV_NOT_ALLOC,  //can not allocate environment handle
-		ENV_CANT_SET_V3,  //can not set env handle to v3
-		DBC_NOT_ALLOC,  //can not allocate db connection handle
-		CANT_CONNECT_DB,
-		STMT_NOT_ALLOC,  //can not allocate statement handle
-		CANT_LOAD_CHANNELS,
-		UNKNOWN_MSMT_TYPE,
-		DB_CONN_NOT_READY,
-		CANT_QUERY_DATA,
-		NO_DATA_FOR_THE_CHANNEL,
-		CANT_PREPARE_QUERY,
-		DSN_TOO_LONG_OR_NULL,
-		
-		/* below are errors specific to this (sub)class */
-		NET_FILE_ERR = 0x100,
-		NET_PROBLEM,
-		ORIG_NET_WONT_RUN,
-		UNKNOWN_CHANNEL,
-		CHAN_TABLE_ERR,
-		HYD_PROBLEM,
-		CANT_PREPARE_SQL,
-		CANT_FILL_SCADA,
-		FILE_PATH_TOO_LONG,
-		FILE_PATH_NOT_ANSI,
-		INVALID_VARIMA,
-		VARIMA_N_NOT_MATCH,
-		MAPPER_PTR_INVALID
-		
-			};
+// Get access to some EPANET data structures
+extern "C" { /* to link with epanet*/
+	//prevent the EPS func from updating demands, see epanet/hydraul.c
+	extern int d_update; 
 
-	enum Mode { /* Data generation modes*/
-		// Possible randomization scenarios:
-		// independent log-normal rv for each node at each step
-		INDEPENDENT,
-		// temporally and spatially correlated
-		TEMPORAL_SPATIAL_CORRELATED
-	};
-
-	struct Makeargs {
-		ScadaGenerator* sgtr;
-		Tstamp* t;
-		int timespan;
-		Varima* md;
-		vtkPolyData** arr; 
-		/* which step is data ready */
-		volatile LONG* datastep;
-		int* dispstep;
-	};
+	//gain access to water demands directly
+	extern double* D;  
+	extern Snode* Node;
+	extern Slink* Link;
+}
 
 
-public: /* public methods */
+enum SG_Mode { 
+	/// independent log-normal rv for each node at each step
+	SG_IID_LN,
+	/// vector time series (i.e., temporally and spatially correlated)
+	SG_VARIMA, 
+};
+/// Generate synthetic SCADA data using EPANET
+/*A ScadaGenerator populates the database with generated SCADA data 
+from a network file and a demand model (can be set as a iid mutlti-dimensional
+normal distribution model or a seasonal vectorized time series model) .
+*/
 
-	/* init hydraulic engine and check/reset the database tables,
-	create sketch of network visualization*/
-	Err init(LPCTSTR inpfile_path, 
-		LPCTSTR dsn, /* if dsn==NULL don't export to database*/
-		int seed);
-	Err init(LPCTSTR inpfile_path, 
-		LPCTSTR dsn, /* if dsn==NULL don't export to database*/
-		int seed, 
-		vtkPolyData* nettop[2] /* if mapper==NULL no visualization*/
-		);
+struct ScadaGenerator{
+	/** Types of water demand model*/
 
-	/* get number of water users in the network*/
-	int getNuser() {return nuser;};
-	int getNTstep() {return ntstep;}; // total steps including control steps
-	int getDur() {return dur;}; //network sim duration time
-
-	/* generate Scada data for a time range*/
-	/* overload function 1, mode INDEPENDENT */
-	Err make(
-		SQL_TIMESTAMP_STRUCT* t1,  /* The time struct for starting time */
-		int timespan, /*The total time of data generation, in seconds*/ 
-		double cov /* coefficient of variation for the log-normal distribution */
-		);
-
-	/* overload function 2, mode TEMPORAL_CORRELATED */
-	Err make(SQL_TIMESTAMP_STRUCT* t1, int timespan, Varima* md);
-
-	Err make(Tstamp* t1, int timespan, Varima* md, 
-		/* array of computed polydatas for pressure and demands visualization,
-		must have 2*NTsteps poly allocated*/
-		vtkPolyData** arr, 
-		/* which step is data ready */
-		volatile LONG* datstep,
-		/* display time in sec */
-		int* dispstep);
-
-	//The following two functions make the generation in a seperate thread
-	static unsigned WINAPI make(void* args_in) {
-		Makeargs* args = (Makeargs*)args_in;
-		return (unsigned)static_cast<ScadaGenerator*>(args->sgtr)->make(
-			args->t, args->timespan, args->md, 
-			args->arr, args->datastep, args->dispstep);
-	};  // called by _beginthreadex
-
-		/* run make in a new thread */
-	Err makeTd(Tstamp* t1, int timespan, Varima* md, 
-		vtkPolyData** arr, 	volatile LONG* datstep, int* dispstep) {
-		Makeargs* args = (Makeargs*)malloc(1*sizeof(Makeargs));
-		args->sgtr = this;
-		args->t = t1; 
-		args->timespan = timespan;
-		args->md = md;
-		args->arr = arr;
-		args->datastep =  datstep;
-		args->dispstep = dispstep;
-		_beginthreadex(NULL, 0, &ScadaGenerator::make, args, 0, NULL);
-		return OK;
-	}
-
-	ScadaGenerator();
-	~ScadaGenerator();
-
-private:
-
-	Mode mode;  /* generation mode */
-
-	int write_db; /*if write to a database */
+	//TCHAR* _inp; ///> input file name
+	SG_Mode mode;  ///> generation mode 
+	DataSource* ds;  ///> db data source, if NULL, dry-run without db
 
 	long dur; /* epanet simulation duration in seconds */
 	long hstep; /* epaent hydraulic time step length */
-	int nnode, ntank, njunc; /* counts of nodes, tanks, junctions*/
+	int nnode, ntank, njunc, nlink; /* counts of nodes, tanks, junctions*/
 	int nuser;  //no. of water users, water user must have demand >0 
-				//at at least one time step
+	//at at least one time step
 	int ntstep; //total time steps/snapshots, including control steps
-	double minx, maxx, miny, maxy, minz, maxz, mind, maxd; 
-	//bands of variables to be visualized
+	double mind, maxd; //minimum and maximum water demand 
 
+    CTime t0; // simulated scada record starting time
+	int elapTime; // elapsed time since beginning of the simulation
 
-	/* max number of characters in a file path*/
-	static const int MAX_FILE_PATH = 255; 
-
-	Channel* chanlist;
-	unsigned n_chan;
-
-	/* SQL strings */
-	//TCHAR sql_clean[MAX_SQL_LEN];
-	//TCHAR sql_create[MAX_SQL_LEN];
-
-	Rvgs* rg;  // random num generator
 
 	double** demands;  //storage for mean demands at all hyd steps
 	//demand[i][istep] is the ith nodal demand at timestep istep
 
-	Err make(SQL_TIMESTAMP_STRUCT* t1, int timespan); //make func
-
-	// for independent mode only
+	/// coefficient of variance. for SG_IID_LN mode only
 	double _cov;
+	Rvgs* rg;  // random num generator, 
 
-	// for correlated demand mode only
+	// varima model, for VARIMA mode only
 	Varima* _md;
-	double** _user;  //water use matrix, stores pointers to water users'
-	//  water demands
-	double* _tpd; // temporary water demand storage
 
-	// for data visualization only
-	int _needsVis;  // need visualization
-	vtkPolyData** _net_array;
-	volatile LONG* _datastep;
-	int* _dispstep;
-	vtkTransformFilter *cyl;
-	vtkPolyData *zlineP, *zlineD;
-	vtkPolyData* _netpoly[2];// reference 3d [0] and 2d [1] networks
-	
+	//map from water user id to water demands (junction id) 
+	//pointers to water users'
+	double** _user;  
+
+	// temporary water demand storage for synthetic water demands
+	double* _tpd; 
+
+	// snapshot of demands and presssures - to be used for visualization
+	double* vdemands;
+	double* vpressures;
+
+	// function hook, will be executed during each time step including control steps
+    // to enable it, both extObj and extUpdate have to be set.
+	// it can be used for visualization interface
+	void* extObj;  // pointer to the external object worked by the hooked function
+	void (*extUpdate)(void*, ScadaGenerator*); //function pointer to visual update function
+
 };
 
 
+enum SG_ERR {  /* Error codes*/
+	SG_OK,
 
+	/* below are errors specific to this (sub)class */
+	SG_NET_FILE_ERR,
+	SG_NET_PROBLEM,
+	SG_NET_INIT_ERR,
+	SG_ORIG_NET_WONT_RUN,
+	SG_CANT_EST_DB,
+	SG_MORE_THAN_ONE_PROVIDER,
 
-	
+	SG_SCADA_INIT_ERR,
+	SG_UNKNOWN_CHANNEL,
+	SG_HYD_PROBLEM,
+	SG_CANT_FILL_SCADA,
+
+	SG_FILE_PATH_TOO_LONG,
+	SG_FILE_PATH_NOT_ANSI,
+	SG_INVALID_VARIMA,
+	SG_VARIMA_N_NOT_MATCH,
+
+	SG_MAPPER_PTR_INVALID,
+	SG_MEM_NOT_ALLOCED,
+    SG_INIT_DATA_NOT_ENOUGH,
+
+	SG_DUMMY_LAST	};
+
+/// Factory method
+/** Load EPANET network inp file. Initialize hydraulic engine.
+Initialize Provider (database). Initialize Random number generator */
+SG_ERR SG_new(TCHAR* inpfile_path, char const* ini_path, int seed, double cov, ScadaGenerator** sg);
+SG_ERR SG_new(TCHAR* inpfile_path, char const* ini_path, int seed, Varima* md, ScadaGenerator** sg);
+
+/// Report error
+void SG_ewi(SG_ERR err);
+
+/// Run hydraulic simulation and write to database  
+SG_ERR SG_make(ScadaGenerator *sg, Tstamp* t0, int timespan);
+
+/// struct for makeT arguments
+struct SG_MakeTArg {
+	ScadaGenerator* sg;
+	Tstamp* t;
+	int timespan;
+};
+
+/// Run SG_make - entry function for multi-threading
+inline unsigned WINAPI SG_makeT(void* args) {
+    SG_MakeTArg* arguments = (SG_MakeTArg*) args;
+	return (unsigned)SG_make(arguments->sg, arguments->t, arguments->timespan);
+};
+
+/// destroy 
+SG_ERR SG_delete(ScadaGenerator *sg);
+

@@ -2,93 +2,103 @@
 #include <sqlext.h>
 #include <atlconv.h>
 #include "iniparser.h"
+#include "SenmCoreIncs.h"
 #include "DataSource.h"
 
+#ifdef _DEBUG
+#define debug 1
+#else
+#define debug 0
+#endif
 
 /* Class DataSource implementation */
 DataSource::DataSource() {
-    _datBuf = NULL;
-     lsChan = NULL;
-     lsProv = NULL;
-     n_prov = 0; 
-     n_chan = 0;
-     dt = 0;
+	_datBuf = NULL;
+	lsChan = NULL;
+	lsProv = NULL;
+	n_prov = 0; 
+	n_chan = 0;
+	dt = 0;
 }
 
 DataSource::Err DataSource::New(const char * ininame, DataSource** ds) {
-USES_CONVERSION;  // for using A2T macro
-    *ds = new DataSource();
- 	if (*ds== NULL) return DataSource::MEM_NOT_ALLOCED;
+    return New(ininame, NULL, ds);
+}
 
-    Err err;
-    dictionary* dict;
+DataSource::Err DataSource::New(const char * ininame, Network* net, DataSource** ds) {
+	USES_CONVERSION;  // for using A2T macro
+	*ds = new DataSource();
+	if (*ds== NULL) return DataSource::MEM_NOT_ALLOCED;
+
+	Err err;
+	dictionary* dict;
 	dict = iniparser_load(ininame);
-    if (dict == NULL) {
-        err = INI_FILE_ERR;
-        goto CLEAN; 
+	if (dict == NULL) {
+		err = INI_FILE_ERR;
+		goto CLEAN; 
 	}
 
-    int dt = iniparser_getint(dict, "General:deltat", -1);
-    if (dt <= 0 ) {
-        err = DELTA_T_ERR_INI_FILE;
-        goto CLEAN;
+	int dt = iniparser_getint(dict, "General:deltat", -1);
+	if (dt <= 0 ) {
+		err = DELTA_T_ERR_INI_FILE;
+		goto CLEAN;
 	} else (*ds)->dt = dt;
 
-    int nprov = iniparser_getint(dict, "General:providers", 0);
-    if (nprov <= 0) {
-        err = N_PROVIDER_ERR_INI_FILE;
-        goto CLEAN;
-	} else (*ds)->n_prov = nprov;
+	int nprov = iniparser_getint(dict, "General:providers", 0);
+	if (nprov <= 0) {
+		err = N_PROVIDER_ERR_INI_FILE;
+		goto CLEAN;
+	}; //else (*ds)->n_prov = nprov;
 
-    for (int iprov=1; iprov<=nprov; ++iprov) {
-        char src[MAX_DSN_LEN];
-        char* dsn, *server, *port, *uid, *pwd;
-        sprintf(src, "Source%d:dsn", iprov);
+	for (int iprov=1; iprov<=nprov; ++iprov) {
+		char src[MAX_DSN_LEN];
+		char* dsn, *server, *port, *uid, *pwd;
+		sprintf(src, "Source%d:dsn", iprov);
 		dsn = iniparser_getstring(dict, src, "");
 
-        sprintf(src, "Source%d:server", iprov);
+		sprintf(src, "Source%d:server", iprov);
 		server = iniparser_getstring(dict, src, "");
 
-        sprintf(src, "Source%d:port", iprov);
+		sprintf(src, "Source%d:port", iprov);
 		port = iniparser_getstring(dict, src, "");
 
-        sprintf(src, "Source%d:uid", iprov);
+		sprintf(src, "Source%d:uid", iprov);
 		uid = iniparser_getstring(dict, src, "");
 
-        sprintf(src, "Source%d:pwd", iprov);
+		sprintf(src, "Source%d:pwd", iprov);
 		pwd = iniparser_getstring(dict, src, "");
 
-        sprintf(src, "DSN=%s; SERVER=%s; PORT=%s; UID=%s; PWD=%s", 
+		sprintf(src, "DSN=%s; SERVER=%s; PORT=%s; UID=%s; PWD=%s", 
 			dsn, server, port, uid, pwd);
 
 		TCHAR tdsn[MAX_DSN_LEN];
 		_tcscpy(tdsn, A2T(src));
 
-        Provider* aPrv;
-        if (Provider::Err perr = Provider::New(tdsn, &aPrv)) {
-			Provider::report(perr);
-            err = CANNOT_CREATE_PROVIDER;
-            goto CLEAN;
+		Provider* aPrv;
+		if (Provider::Err perr = Provider::New(tdsn, &aPrv, net)) {
+			Provider::reportEWI(perr);
+			err = CANNOT_CREATE_PROVIDER;
+			goto CLEAN;
 		}
 
 		if (Err derr = (*ds)->addProvider(aPrv)) {
-            report(derr);
-            err = derr;
-            goto CLEAN;
+			reportEWI(derr);
+			err = derr;
+			goto CLEAN;
 		}
 	}
 	return OK;
 
 CLEAN:
 	iniparser_freedict(dict);
-    delete (*ds);
-    (*ds) = NULL;
-    return err;
-   
+	delete (*ds);
+	(*ds) = NULL;
+	return err;
+
 }
 
-void DataSource::report(Err err, TCHAR* arr) {
-	TCHAR errtxt[DUMMY_LAST][DATASOURCE_MAX_ERR_TEXT] = {
+void DataSource::reportEWI(Err err) {
+	TCHAR errtxt[DUMMY_LAST][MAX_ERR_STRING_SIZE] = {
 		TEXT("OK."),
 		TEXT("Could not allocate memory for an object or array."),
 		TEXT("Data provider provided is not valid."),
@@ -102,27 +112,24 @@ void DataSource::report(Err err, TCHAR* arr) {
 
 	};
 
-	_tcscpy(arr, errtxt[err]);
-}
+	TCHAR txt[MAX_ERR_STRING_SIZE+MAX_ERR_PREFIX_SIZE];
+    _stprintf(txt, TEXT("DataSource:%s"), errtxt[err]);
 
-void DataSource::report(Err err, FILE* errfile) {
-	TCHAR tperrtxt[DATASOURCE_MAX_ERR_TEXT];
-	report(err, tperrtxt);
-	_ftprintf(errfile, TEXT("Data Source: %s\n"), tperrtxt);
+    ewi(txt);
 }
 
 
 
 DataSource::Err DataSource::addProvider(Provider* prov_in) {
 	unsigned n_new_chan;
-    Provider::Err perr;
+	Provider::Err perr;
 
 	if (prov_in == NULL) return PROVIDER_INVALID;
-	if (perr = prov_in->loadChannels()) {
-        Provider::report(perr);
-		return CANT_ADD_PROVIDER;
-	}
-    n_new_chan = prov_in->nChan;
+//	if (perr = prov_in->loadChannels(NULL)) {
+//		Provider::reportEWI(perr);
+//		return CANT_ADD_PROVIDER;
+//	}
+	n_new_chan = prov_in->nChan;
 	if ( n_new_chan == 0) {
 		return NO_CHAN_ADDED;
 	}
@@ -139,9 +146,9 @@ DataSource::Err DataSource::addProvider(Provider* prov_in) {
 
 	free(_datBuf);
 
-    // insert the new provider
-    prov_in->next = lsProv;
-    lsProv = prov_in; // update provider list head
+	// insert the new provider
+	prov_in->next = lsProv;
+	lsProv = prov_in; // update provider list head
 
 	n_chan += n_new_chan;
 	_datBuf = _tpdatBuf;
@@ -156,7 +163,8 @@ Channel* DataSource::getChan(int chan_id) {
 }
 
 void DataSource::dumpChannelsInfo() {
-	TCHAR txts[10][DATASOURCE_MAX_CHAN_INFO] = {
+	USES_CONVERSION;
+	TCHAR txts[][DATASOURCE_MAX_CHAN_INFO] = {
 		TEXT("No channel"),
 		TEXT("Water level"),
 		TEXT("Pump flow rate"),
@@ -166,7 +174,9 @@ void DataSource::dumpChannelsInfo() {
 		TEXT("Pipe flow rate "),
 		TEXT("Pipe/valve on/off"),
 		TEXT("Nodal pressure"),
-		TEXT("Real-time demad (flow meter)")};
+		TEXT("Real-time demad (flow meter)"),
+        TEXT("Unknown measurement")
+	};
 
 	_ftprintf(stderr, 
 		TEXT("DataSource Info\nTime Quantum: %d Sec, Total %d channels from %d providers.\n"), 
@@ -185,7 +195,7 @@ void DataSource::dumpChannelsInfo() {
 		case Channel::C: type = txts[7]; break;
 		case Channel::P: type = txts[8]; break;
 		case Channel::D: type = txts[9]; break;
-		default: type= TEXT("Unknown measurement");
+		default: type= txts[10];
 		}
 
 		switch (chan_it->status) {
@@ -195,17 +205,17 @@ void DataSource::dumpChannelsInfo() {
 		}
 
 		_ftprintf(stderr, TEXT(
-			"Channel [%d]: Provider: %d, EPANET id: %S, Type: %s, Status: %s\n"), 
-			chan_it->key, (unsigned)chan_it->provider, 
-			chan_it->name, type, status);
+			"Channel {%d}: %s @ EPANET Idx %d(%s): Stat:%s\n"), 
+			chan_it->key, type, chan_it->mindex, A2T(chan_it->name), status);
 	}
 }
 
 DataSource::Err DataSource::fillSnapshots(Tstamp t_in, unsigned n, double* snapshots) {
+    Err err = OK;
 	//snapshots memory must be alloced,
 	if (snapshots == NULL) return MEM_NOT_ALLOCED;
 	unsigned j = 0;  //j - channel no.
-    int fErr = 0;
+	int fErr = 0;
 
 	for (unsigned i=0; i<=n; ++i) { // iterate through time steps
 		j=0;
@@ -215,14 +225,16 @@ DataSource::Err DataSource::fillSnapshots(Tstamp t_in, unsigned n, double* snaps
 					t_in, -(int)i*dt, /* time shifts backward*/
 					chan_it->key, &snapshots[i*n_chan + (j++)], NULL);
 				if (err) {
-					Provider::report(err);
-                    fErr = 1;
+					Provider::reportEWI(err);
+					fErr = 1;
 				}
 		}
 	}
 
-    if (fErr) return CANT_GET_DATA_THRU_CHAN;
-	else return OK;
+	if (fErr) {
+        reportEWI(err = CANT_GET_DATA_THRU_CHAN);
+	} 
+    return err;
 }
 
 DataSource::Err DataSource::fillASnapshot(CTime ct, double* snapshot) {
@@ -259,14 +271,14 @@ DataSource::~DataSource() {
 	//	}
 	free(_datBuf);
 
-    //destroy providers (which in turn destroy channels)
+	//destroy providers (which in turn destroy channels)
 
-    Provider* tpPv = lsProv;
-    Provider* cur;
-    while (tpPv) {
-        cur = tpPv;
-        tpPv = tpPv->next;
-        delete cur;
+	Provider* tpPv = lsProv;
+	Provider* cur;
+	while (tpPv) {
+		cur = tpPv;
+		tpPv = tpPv->next;
+		delete cur;
 	}
 }
 
@@ -280,33 +292,33 @@ Provider::Provider()
 	hStmt_dat_prepared = 0;
 	lsChan = NULL;
 	nChan = 0;
-    next = NULL;
+	next = NULL;
 	_tcscpy(dat_tab, TEXT("Msmts"));  // fact table
 	_tcscpy(chan_tab, TEXT("Channels"));  // data table
 
 }
 
-Provider::Err Provider::New(TCHAR* tdsn, Provider** prov_out) {
-    (*prov_out)  = new Provider();
-    if (*prov_out == NULL) return MEM_NOT_ALLOCED;
+Provider::Err Provider::New(TCHAR* tdsn, Provider** prov_out, Network* net) {
+	(*prov_out)  = new Provider();
+	if (*prov_out == NULL) return MEM_NOT_ALLOCED;
 
-    Err err;
+	Err err;
 	err = (*prov_out)->connect(tdsn);
-    if (err)  goto END;
+	if (err)  goto END;
 
-	err = (*prov_out)->loadChannels();
-    if (err) goto END;
+	err = (*prov_out)->loadChannels(net);
+	if (err) goto END;
 
 	return OK;
 
 END:
-    delete (*prov_out);
-    return err;
+	delete (*prov_out);
+	return err;
 
 }
 
-void Provider::report(Err err, TCHAR* arr) {
-	TCHAR errtxt[DUMMY_LAST][PROVIDER_MAX_ERRTXT] = {
+void Provider::reportEWI(Err err) {
+	TCHAR errtxt[DUMMY_LAST][MAX_ERR_STRING_SIZE] = {
 		TEXT("OK"),
 		TEXT("Memory can not be allocated."),
 
@@ -316,6 +328,9 @@ void Provider::report(Err err, TCHAR* arr) {
 		TEXT("DSN string is either null or too long."),
 		TEXT("Cannot connect to database. Check the DSN. "),
 		TEXT("Unable to allocate statement handle"),
+
+		TEXT("Could not prepare the SQL statement."),
+        TEXT("Could not insert scada data into the database."),
 		TEXT("Cannot load data channels. check if table and column exist in the db."),
 		TEXT("the type of the measurments is unkonwn."),
 		TEXT("Database, statment, or environement handle is not ready. run connect() first."),
@@ -323,16 +338,16 @@ void Provider::report(Err err, TCHAR* arr) {
 		TEXT("SQL statement fails to execute. Do the required columns exist in the table?"),
 		TEXT("SQL statement fails to fetch"),
 		TEXT("The SQL statment is not prepared. Do the data table/view exist in the db?"),
+        TEXT("Could not reset fact table"),
 	};
 
-	_tcscpy( arr, errtxt[err]);
+	TCHAR txt[MAX_ERR_STRING_SIZE+MAX_ERR_PREFIX_SIZE];
+
+	_stprintf(txt, TEXT("<%s>DataProvider:%s"), TEXT("DAL"), errtxt[err]);
+
+    ewi(txt);
 }
 
-void Provider::report(Err err, FILE* errfile) {
-	TCHAR tperr[PROVIDER_MAX_ERRTXT];
-	report(err, tperr);
-	_ftprintf(errfile, TEXT("Provider: %s\n"), tperr);
-}
 
 // Connect to a database with a given dsn string
 Provider::Err Provider::connect(LPCTSTR dsn_in  /* Data source name*/ ) {
@@ -397,9 +412,79 @@ Provider::Err Provider::connect(LPCTSTR dsn_in  /* Data source name*/ ) {
 		handleDiagnosticRecord(hDbc, SQL_HANDLE_DBC, rc);
 		if (rc == SQL_ERROR) return STMT_NOT_ALLOC;
 	}
+	if (rc = SQLAllocHandle(SQL_HANDLE_STMT, hDbc, &hStmt_w)) {
+		//if not good
+		handleDiagnosticRecord(hDbc, SQL_HANDLE_DBC, rc);
+		if (rc == SQL_ERROR) return STMT_NOT_ALLOC;
+	}
+
 
 	return OK;
 
+}
+
+Provider::Err Provider::initInsertScada(Tstamp* scada_t0){
+
+	SQLTCHAR sqltext[MAX_SQL_LEN];
+	RETCODE rc;
+    Err err;
+
+	if (debug) _stprintf(sqltext, TEXT(
+		"INSERT INTO %s (time, value, cid) VALUES(DATE_ADD(?, INTERVAL ? SECOND), ?, ?);"), 
+		dat_tab);
+
+	rc = SQLPrepare(hStmt_w, sqltext, SQL_NTS);
+	if (rc) {
+		handleDiagnosticRecord(hStmt_w, SQL_HANDLE_STMT, rc);
+		if (rc == SQL_ERROR) {
+			reportEWI(err = CANT_PREPARE_SQL); return err;
+		}
+	}
+
+	rc = SQLBindParameter(hStmt_w, 1, SQL_PARAM_INPUT, 
+		SQL_C_TIMESTAMP, SQL_TYPE_TIMESTAMP, 23, 3, scada_t0, 0, NULL);
+    return OK;
+}
+
+Provider::Err Provider::insertScada(int* timeshift, int* chan_key, float* signal) {
+	RETCODE rc;
+    Err err;
+
+	rc = SQLBindParameter(hStmt_w, 2, SQL_PARAM_INPUT, 
+		SQL_C_ULONG, SQL_INTEGER, 10, 0, timeshift, 0, NULL);
+
+	rc = SQLBindParameter(hStmt_w, 4, SQL_PARAM_INPUT, 
+		SQL_C_ULONG, SQL_INTEGER, 10, 0, (chan_key), 0, NULL);
+	rc = SQLBindParameter(hStmt_w, 3, SQL_PARAM_INPUT, 
+		SQL_C_FLOAT, SQL_FLOAT, 15, 0, signal, 0, NULL);
+
+	rc = SQLExecute(hStmt_w);
+	if (rc) {
+		handleDiagnosticRecord(hStmt_w, SQL_HANDLE_STMT, rc);
+		if (rc == SQL_ERROR) {
+			reportEWI(err = CANT_INSERT_SCADA);
+            return err;
+		}
+	}
+    return OK;
+}
+
+Provider::Err Provider::resetFactTab(){
+	if ((hEnv == NULL) || (hDbc = NULL) || (hStmt == NULL) )
+		return DB_CONN_NOT_READY;
+
+	SQLTCHAR sqltext[MAX_SQL_LEN];
+	_stprintf(sqltext, TEXT("DELETE from %s"), dat_tab);
+
+    SQLRETURN rc;
+	rc = SQLExecDirect(hStmt, sqltext, SQL_NTS);
+    if (rc) {
+			handleDiagnosticRecord(hStmt_dat, SQL_HANDLE_STMT, rc);
+			if (rc==SQL_ERROR) return CANT_RESET_FACT_TAB;
+	}
+
+    return OK;
+	
 }
 
 
@@ -510,84 +595,89 @@ void Provider::handleDiagnosticRecord(SQLHANDLE      hHandle,
 
 }
 
-Provider::Err Provider::loadChannels( ) {
-		RETCODE rc;
-		SQLTCHAR sqltext[MAX_SQL_LEN];
-		_stprintf(sqltext, 
-			TEXT("SELECT id, net_id_str, msmt_t, l_lim, r_lim FROM %s;"), chan_tab);
+Provider::Err Provider::loadChannels(Network* net) {
+	RETCODE rc;
+	SQLTCHAR sqltext[MAX_SQL_LEN];
+	_stprintf(sqltext, 
+		TEXT("SELECT id, net_id_str, msmt_t, l_lim, r_lim FROM %s;"), chan_tab);
 
 
-		SQLUINTEGER id; 
-		SQLCHAR net_id[MAX_NET_ID_LEN];
-		SQLCHAR type[2];
-		SQLDOUBLE llim, rlim; //left (lower) and right limits of the sensor
-		SQLLEN	id_indi, netid_indi, type_indi, ll_indi, rl_indi; //indicators
+	SQLUINTEGER id; 
+	SQLCHAR net_id[MAX_NET_ID_LEN];
+	SQLCHAR type[2];
+	SQLDOUBLE llim, rlim; //left (lower) and right limits of the sensor
+	SQLLEN	id_indi, netid_indi, type_indi, ll_indi, rl_indi; //indicators
 
-		SQLBindCol(hStmt, 1, SQL_C_ULONG, &id, 0, &id_indi);
-		SQLBindCol(hStmt, 2, SQL_C_CHAR, &net_id, MAX_NET_ID_LEN, &netid_indi);
-		SQLBindCol(hStmt, 3, SQL_C_CHAR, &type, 2, &type_indi);
-		SQLBindCol(hStmt, 4, SQL_C_DOUBLE, &llim, 0, &ll_indi);
-		SQLBindCol(hStmt, 5, SQL_C_DOUBLE, &rlim, 0, &rl_indi);
+	SQLBindCol(hStmt, 1, SQL_C_ULONG, &id, 0, &id_indi);
+	SQLBindCol(hStmt, 2, SQL_C_CHAR, &net_id, MAX_NET_ID_LEN, &netid_indi);
+	SQLBindCol(hStmt, 3, SQL_C_CHAR, &type, 2, &type_indi);
+	SQLBindCol(hStmt, 4, SQL_C_DOUBLE, &llim, 0, &ll_indi);
+	SQLBindCol(hStmt, 5, SQL_C_DOUBLE, &rlim, 0, &rl_indi);
 
-		if (rc = SQLExecDirect(hStmt, sqltext, SQL_NTS)) {
-			handleDiagnosticRecord(hStmt, SQL_HANDLE_STMT, rc);
-			if (rc==SQL_ERROR) return CANT_LOAD_CHANNELS;
+	if (rc = SQLExecDirect(hStmt, sqltext, SQL_NTS)) {
+		handleDiagnosticRecord(hStmt, SQL_HANDLE_STMT, rc);
+		if (rc==SQL_ERROR) return CANT_LOAD_CHANNELS;
+	}
+
+	SQLLEN n_rows = 0;
+	SQLRowCount(hStmt, &n_rows);
+	if (n_rows == 0) return CANT_LOAD_CHANNELS;
+
+	nChan = (unsigned)n_rows;
+
+	Channel* chan_list_head = NULL;
+
+	while ((rc = SQLFetch(hStmt)) != SQL_NO_DATA) {
+
+		Channel* aChan = new Channel();
+		aChan->key = id;  
+		strncpy(aChan->name, (char*)net_id, MAX_NET_ID_LEN);
+		aChan->provider = this;
+		switch (type[0]) {
+		case 'C': aChan->type = Channel::C; break;
+		case 'L': aChan->type = Channel::L; break; //actually, tank/reservior level
+		case 'Q': aChan->type = Channel::Q ;break;
+		case 'P': aChan->type = Channel::P ;break; 
+		case 'A': aChan->type = Channel::A ;break; 
+		case 'B': aChan->type = Channel::B ;break; 
+		case 'D': aChan->type = Channel::D ;break; 
+		case 'F': aChan->type = Channel::F ;break; 
+		case 'V': aChan->type = Channel::V ;break; 
+		default: aChan->type = Channel::NONE; 
 		}
 
-		SQLLEN n_rows = 0;
-		SQLRowCount(hStmt, &n_rows);
-		if (n_rows == 0) return CANT_LOAD_CHANNELS;
-
-		nChan = (unsigned)n_rows;
-
-		Channel* chan_list_head = NULL;
-
-		while ((rc = SQLFetch(hStmt)) != SQL_NO_DATA) {
-
-			Channel* aChan = new Channel();
-			aChan->key = id;  
-			strncpy(aChan->name, (char*)net_id, MAX_NET_ID_LEN);
-			aChan->provider = this;
-			switch (type[0]) {
-			case 'C': aChan->type = Channel::C; break;
-			case 'L': aChan->type = Channel::L; break; //actually, tank/reservior level
-			case 'Q': aChan->type = Channel::Q ;break;
-			case 'P': aChan->type = Channel::P ;break; 
-			case 'A': aChan->type = Channel::A ;break; 
-			case 'B': aChan->type = Channel::B ;break; 
-			case 'D': aChan->type = Channel::D ;break; 
-			case 'F': aChan->type = Channel::F ;break; 
-			case 'V': aChan->type = Channel::V ;break; 
-			default: aChan->type = Channel::NONE; 
-			}
-
-			aChan->lower_lim = llim;
-			aChan->upper_lim = rlim;
-			aChan->mindex = 0; //unset, deferred to network assignment
-			//unit type unset
-			// rse, err_data should be defined 
-			aChan->status = Channel::OK;
-
-			//insert the channel
-			aChan->next = chan_list_head;
-			chan_list_head = aChan;
+		aChan->lower_lim = llim;
+		aChan->upper_lim = rlim;
+        if (net!=NULL) {
+			int idx = net->name2idx(aChan->name);
+            if (idx==0) return CANT_FIND_COR_COMP;
+			aChan->mindex = idx;
+		} else {
+            aChan->mindex = 0; //network unset
 		}
+		//unit type unset
+		// rse, err_data should be defined 
+		aChan->status = Channel::OK;
 
-		lsChan = chan_list_head;
+		//insert the channel
+		aChan->next = chan_list_head;
+		chan_list_head = aChan;
+	}
+
+	lsChan = chan_list_head;
 
 
-		SQLCloseCursor(hStmt);
+	SQLCloseCursor(hStmt);
 
-		return OK;
+	return OK;
 
 }
 
 Provider::~Provider() {
 	//destructor
-	if (hStmt)
-	{
-		SQLFreeHandle(SQL_HANDLE_STMT, hStmt);
-	}
+	if (hStmt) { SQLFreeHandle(SQL_HANDLE_STMT, hStmt); }
+	if (hStmt_dat) { SQLFreeHandle(SQL_HANDLE_STMT, hStmt); }
+	if (hStmt_w) { SQLFreeHandle(SQL_HANDLE_STMT, hStmt); }
 
 	if (hDbc)
 	{

@@ -25,7 +25,7 @@ int main(int argv, char** argc) { //argc[1] is the config file name
     DataSource *ds;
     derr = DataSource::New(argc[1], &ds);
     if (derr) {
-        DataSource::report(derr);
+        DataSource::reportEWI(derr);
         return 1;
 	}
 

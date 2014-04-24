@@ -1,44 +1,80 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
-    <ProjectConfiguration Include="Debug|Win32">
-      <Configuration>Debug</Configuration>
-      <Platform>Win32</Platform>
-    </ProjectConfiguration>
     <ProjectConfiguration Include="Debug|x64">
       <Configuration>Debug</Configuration>
       <Platform>x64</Platform>
-    </ProjectConfiguration>
-    <ProjectConfiguration Include="Release|Win32">
-      <Configuration>Release</Configuration>
-      <Platform>Win32</Platform>
     </ProjectConfiguration>
     <ProjectConfiguration Include="Release|x64">
       <Configuration>Release</Configuration>
       <Platform>x64</Platform>
     </ProjectConfiguration>
   </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="src\DataSource.cpp" />
+    <ClCompile Include="src\EPANET-lt\epanet.c" />
+    <ClCompile Include="src\EPANET-lt\hash.c" />
+    <ClCompile Include="src\EPANET-lt\hydraul.c" />
+    <ClCompile Include="src\EPANET-lt\inpfile.c" />
+    <ClCompile Include="src\EPANET-lt\input1.c" />
+    <ClCompile Include="src\EPANET-lt\input2.c" />
+    <ClCompile Include="src\EPANET-lt\input3.c" />
+    <ClCompile Include="src\EPANET-lt\lemontiger.c" />
+    <ClCompile Include="src\EPANET-lt\mempool.c" />
+    <ClCompile Include="src\EPANET-lt\output.c" />
+    <ClCompile Include="src\EPANET-lt\quality.c" />
+    <ClCompile Include="src\EPANET-lt\report.c" />
+    <ClCompile Include="src\EPANET-lt\rules.c" />
+    <ClCompile Include="src\EPANET-lt\smatrix.c" />
+    <ClCompile Include="src\EPANET-lt\testLT.c" />
+    <ClCompile Include="src\ewi.cpp" />
+    <ClCompile Include="src\iniParser_3.1\dictionary.cpp" />
+    <ClCompile Include="src\iniParser_3.1\iniparser.cpp" />
+    <ClCompile Include="src\Network.cpp" />
+    <ClCompile Include="src\rngs\rngs.c" />
+    <ClCompile Include="src\rngs\rvgs.cpp" />
+    <ClCompile Include="src\ScadaGenerator.cpp" />
+    <ClCompile Include="src\SFMT_1.4\SFMT.c" />
+    <ClCompile Include="src\TestVSG.cpp" />
+    <ClCompile Include="src\Varima.cpp" />
+    <ClCompile Include="src\VisScadaGenerator.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="src\DataSource.h" />
+    <ClInclude Include="src\EPANET-lt\enumstxt.h" />
+    <ClInclude Include="src\EPANET-lt\funcs.h" />
+    <ClInclude Include="src\EPANET-lt\hash.h" />
+    <ClInclude Include="src\EPANET-lt\lemontiger.h" />
+    <ClInclude Include="src\EPANET-lt\mempool.h" />
+    <ClInclude Include="src\EPANET-lt\text.h" />
+    <ClInclude Include="src\EPANET-lt\toolkit.h" />
+    <ClInclude Include="src\EPANET-lt\types.h" />
+    <ClInclude Include="src\EPANET-lt\vars.h" />
+    <ClInclude Include="src\Network.h" />
+    <ClInclude Include="src\rngs\rngs.h" />
+    <ClInclude Include="src\rngs\rvgs.h" />
+    <ClInclude Include="src\ScadaGenerator.h" />
+    <ClInclude Include="src\SenmCoreIncs.h" />
+    <ClInclude Include="src\SenmVtkIncs.h" />
+    <ClInclude Include="src\SFMT_1.4\SFMT-common.h" />
+    <ClInclude Include="src\SFMT_1.4\SFMT-params.h" />
+    <ClInclude Include="src\SFMT_1.4\SFMT-params19937.h" />
+    <ClInclude Include="src\SFMT_1.4\SFMT-sse2.h" />
+    <ClInclude Include="src\SFMT_1.4\SFMT.h" />
+    <ClInclude Include="src\Varima.h" />
+    <ClInclude Include="src\VisNetwork.h" />
+    <ClInclude Include="src\VisScadaGenerator.h" />
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{091D005F-9823-49AB-89BE-FA075763C0A0}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
-    <ConfigurationType>Application</ConfigurationType>
-    <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v110</PlatformToolset>
-    <CharacterSet>Unicode</CharacterSet>
-  </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v110</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
-    <ConfigurationType>DynamicLibrary</ConfigurationType>
-    <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v110</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
@@ -49,47 +85,21 @@
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
   </ImportGroup>
-  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
-  </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="PropertySheets">
-    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
-  </ImportGroup>
-  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="tests\SenMCommon.props" />
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="PropertySheets">
+    <Import Project="tests\SenMCommon.props" />
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <LinkIncremental>true</LinkIncremental>
-  </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <LinkIncremental>true</LinkIncremental>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>true</LinkIncremental>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>true</LinkIncremental>
   </PropertyGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <ClCompile>
-      <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_USRDLL;EPANETLT_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
-      <WarningLevel>Level3</WarningLevel>
-      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
-      <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>C:\Users\owner\SkyDrive\Research\CODE\senm;C:\Users\owner\SkyDrive\Research\CODE\senm\rngs;C:\Users\owner\SkyDrive\Research\CODE\senm\epanet-lt;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <CompileAs>Default</CompileAs>
-    </ClCompile>
-    <Link>
-      <TargetMachine>MachineX86</TargetMachine>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
-      <SubSystem>NotSet</SubSystem>
-    </Link>
-  </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
       <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_USRDLL;EPANETLT_EXPORTS;VTK_AUTOLOAD_PATH;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -97,7 +107,6 @@
       <WarningLevel>Level3</WarningLevel>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>C:\Users\owner\Documents\GitHub\vtk\VTK\Graphics;C:\Users\owner\Documents\GitHub\vtk\VTK\Hybrid;C:\Users\owner\Documents\GitHub\vtk\VTK\Geovis;C:\Users\owner\Documents\GitHub\vtk\build-jc5;C:\Users\owner\Documents\GitHub\vtk\VTK\Common;C:\Users\owner\Documents\GitHub\vtk\VTK\Rendering;C:\Users\owner\Documents\GitHub\vtk\VTK\Filtering;C:\Users\owner\Documents\GitHub\vtk\build-jc5\IO;C:\Users\owner\Documents\GitHub\vtk\build-jc5\Filters;C:\Users\owner\Documents\GitHub\vtk\build-jc5\Common;C:\Users\owner\Documents\GitHub\vtk\build-jc5\Rendering;$(ProjectDir)rngs;$(ProjectDir)epanet-lt;$(ProjectDir)SFMC</AdditionalIncludeDirectories>
       <CompileAs>Default</CompileAs>
     </ClCompile>
     <Link>
@@ -105,21 +114,6 @@
       <SubSystem>NotSet</SubSystem>
       <AdditionalLibraryDirectories>C:\Users\owner\Documents\GitHub\vtk\build-jc5\bin\Debug;libs</AdditionalLibraryDirectories>
       <AdditionalDependencies>libgoto2.lib;vtkGraphics.lib;vtkRendering.lib;vtkCommon.lib;vtkFiltering.lib;vtkGeovis.lib;*.lib;%(AdditionalDependencies)</AdditionalDependencies>
-    </Link>
-  </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <ClCompile>
-      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;EPANETLT_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
-      <WarningLevel>Level3</WarningLevel>
-      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
-    </ClCompile>
-    <Link>
-      <TargetMachine>MachineX86</TargetMachine>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
-      <SubSystem>Windows</SubSystem>
-      <EnableCOMDATFolding>true</EnableCOMDATFolding>
-      <OptimizeReferences>true</OptimizeReferences>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -139,56 +133,6 @@
       <AdditionalDependencies>libgoto2.lib;vtkGraphics.lib;vtkRendering.lib;vtkCommon.lib;vtkFiltering.lib;vtkGeovis.lib;*.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
-  <ItemGroup>
-    <ClCompile Include="DataSource.cpp" />
-    <ClCompile Include="epanet-lt\epanet.c" />
-    <ClCompile Include="epanet-lt\hash.c" />
-    <ClCompile Include="epanet-lt\hydraul.c" />
-    <ClCompile Include="epanet-lt\inpfile.c" />
-    <ClCompile Include="epanet-lt\input1.c" />
-    <ClCompile Include="epanet-lt\input2.c" />
-    <ClCompile Include="epanet-lt\input3.c" />
-    <ClCompile Include="epanet-lt\lemontiger.c" />
-    <ClCompile Include="epanet-lt\mempool.c" />
-    <ClCompile Include="epanet-lt\output.c" />
-    <ClCompile Include="epanet-lt\quality.c" />
-    <ClCompile Include="epanet-lt\report.c" />
-    <ClCompile Include="epanet-lt\rules.c" />
-    <ClCompile Include="epanet-lt\smatrix.c" />
-    <ClCompile Include="epanet-lt\testLT.c" />
-    <ClCompile Include="rngs\rvgs.cpp" />
-    <ClCompile Include="ScadaGenerator.cpp" />
-    <ClCompile Include="SFMC\SFMT.c" />
-    <ClCompile Include="testSG.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="testVisi.cpp" />
-    <ClCompile Include="Varima.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="clapack.h" />
-    <ClInclude Include="DataSource.h" />
-    <ClInclude Include="epanet-lt\enumstxt.h" />
-    <ClInclude Include="epanet-lt\funcs.h" />
-    <ClInclude Include="epanet-lt\hash.h" />
-    <ClInclude Include="epanet-lt\lemontiger.h" />
-    <ClInclude Include="epanet-lt\mempool.h" />
-    <ClInclude Include="epanet-lt\text.h" />
-    <ClInclude Include="epanet-lt\toolkit.h" />
-    <ClInclude Include="epanet-lt\types.h" />
-    <ClInclude Include="epanet-lt\vars.h" />
-    <ClInclude Include="f2c.h" />
-    <ClInclude Include="rngs\rvgs.h" />
-    <ClInclude Include="ScadaGenerator.h" />
-    <ClInclude Include="SFMC\SFMT-common.h" />
-    <ClInclude Include="SFMC\SFMT-params.h" />
-    <ClInclude Include="SFMC\SFMT-params19937.h" />
-    <ClInclude Include="SFMC\SFMT-sse2.h" />
-    <ClInclude Include="SFMC\SFMT.h" />
-    <ClInclude Include="Varima.h" />
-    <ClInclude Include="vtkincludes.h" />
-  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

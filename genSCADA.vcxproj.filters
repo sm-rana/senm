@@ -1,125 +1,144 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <ClCompile Include="ScadaGenerator.cpp" />
-    <ClCompile Include="epanet-lt\epanet.c">
-      <Filter>epanet-lt</Filter>
+    <ClCompile Include="src\ScadaGenerator.cpp" />
+    <ClCompile Include="src\Varima.cpp" />
+    <ClCompile Include="src\EPANET-lt\epanet.c">
+      <Filter>EPANET-lt</Filter>
     </ClCompile>
-    <ClCompile Include="epanet-lt\hash.c">
-      <Filter>epanet-lt</Filter>
+    <ClCompile Include="src\EPANET-lt\hash.c">
+      <Filter>EPANET-lt</Filter>
     </ClCompile>
-    <ClCompile Include="epanet-lt\hydraul.c">
-      <Filter>epanet-lt</Filter>
+    <ClCompile Include="src\EPANET-lt\hydraul.c">
+      <Filter>EPANET-lt</Filter>
     </ClCompile>
-    <ClCompile Include="epanet-lt\inpfile.c">
-      <Filter>epanet-lt</Filter>
+    <ClCompile Include="src\EPANET-lt\inpfile.c">
+      <Filter>EPANET-lt</Filter>
     </ClCompile>
-    <ClCompile Include="epanet-lt\input1.c">
-      <Filter>epanet-lt</Filter>
+    <ClCompile Include="src\EPANET-lt\input1.c">
+      <Filter>EPANET-lt</Filter>
     </ClCompile>
-    <ClCompile Include="epanet-lt\input2.c">
-      <Filter>epanet-lt</Filter>
+    <ClCompile Include="src\EPANET-lt\input2.c">
+      <Filter>EPANET-lt</Filter>
     </ClCompile>
-    <ClCompile Include="epanet-lt\input3.c">
-      <Filter>epanet-lt</Filter>
+    <ClCompile Include="src\EPANET-lt\input3.c">
+      <Filter>EPANET-lt</Filter>
     </ClCompile>
-    <ClCompile Include="epanet-lt\lemontiger.c">
-      <Filter>epanet-lt</Filter>
+    <ClCompile Include="src\EPANET-lt\lemontiger.c">
+      <Filter>EPANET-lt</Filter>
     </ClCompile>
-    <ClCompile Include="epanet-lt\mempool.c">
-      <Filter>epanet-lt</Filter>
+    <ClCompile Include="src\EPANET-lt\mempool.c">
+      <Filter>EPANET-lt</Filter>
     </ClCompile>
-    <ClCompile Include="epanet-lt\output.c">
-      <Filter>epanet-lt</Filter>
+    <ClCompile Include="src\EPANET-lt\output.c">
+      <Filter>EPANET-lt</Filter>
     </ClCompile>
-    <ClCompile Include="epanet-lt\quality.c">
-      <Filter>epanet-lt</Filter>
+    <ClCompile Include="src\EPANET-lt\quality.c">
+      <Filter>EPANET-lt</Filter>
     </ClCompile>
-    <ClCompile Include="epanet-lt\report.c">
-      <Filter>epanet-lt</Filter>
+    <ClCompile Include="src\EPANET-lt\report.c">
+      <Filter>EPANET-lt</Filter>
     </ClCompile>
-    <ClCompile Include="epanet-lt\rules.c">
-      <Filter>epanet-lt</Filter>
+    <ClCompile Include="src\EPANET-lt\rules.c">
+      <Filter>EPANET-lt</Filter>
     </ClCompile>
-    <ClCompile Include="epanet-lt\smatrix.c">
-      <Filter>epanet-lt</Filter>
+    <ClCompile Include="src\EPANET-lt\smatrix.c">
+      <Filter>EPANET-lt</Filter>
     </ClCompile>
-    <ClCompile Include="epanet-lt\testLT.c">
-      <Filter>epanet-lt</Filter>
+    <ClCompile Include="src\EPANET-lt\testLT.c">
+      <Filter>EPANET-lt</Filter>
     </ClCompile>
-    <ClCompile Include="DataSource.cpp" />
-    <ClCompile Include="SFMC\SFMT.c">
-      <Filter>sfmt</Filter>
+    <ClCompile Include="src\DataSource.cpp" />
+    <ClCompile Include="src\TestVSG.cpp" />
+    <ClCompile Include="src\VisScadaGenerator.cpp" />
+    <ClCompile Include="src\iniParser_3.1\dictionary.cpp">
+      <Filter>iniParser_3.1</Filter>
     </ClCompile>
-    <ClCompile Include="rngs\rvgs.cpp">
+    <ClCompile Include="src\iniParser_3.1\iniparser.cpp">
+      <Filter>iniParser_3.1</Filter>
+    </ClCompile>
+    <ClCompile Include="src\SFMT_1.4\SFMT.c">
+      <Filter>SFMT_1.4</Filter>
+    </ClCompile>
+    <ClCompile Include="src\rngs\rngs.c">
       <Filter>rngs</Filter>
     </ClCompile>
-    <ClCompile Include="Varima.cpp" />
-    <ClCompile Include="testSG.cpp" />
-    <ClCompile Include="testVisi.cpp" />
+    <ClCompile Include="src\rngs\rvgs.cpp">
+      <Filter>rngs</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Network.cpp" />
+    <ClCompile Include="src\ewi.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="ScadaGenerator.h" />
-    <ClInclude Include="epanet-lt\enumstxt.h">
-      <Filter>epanet-lt</Filter>
+    <ClInclude Include="src\ScadaGenerator.h" />
+    <ClInclude Include="src\Varima.h" />
+    <ClInclude Include="src\SenmVtkIncs.h" />
+    <ClInclude Include="src\SenmCoreIncs.h" />
+    <ClInclude Include="src\EPANET-lt\enumstxt.h">
+      <Filter>EPANET-lt</Filter>
     </ClInclude>
-    <ClInclude Include="epanet-lt\funcs.h">
-      <Filter>epanet-lt</Filter>
+    <ClInclude Include="src\EPANET-lt\funcs.h">
+      <Filter>EPANET-lt</Filter>
     </ClInclude>
-    <ClInclude Include="epanet-lt\hash.h">
-      <Filter>epanet-lt</Filter>
+    <ClInclude Include="src\EPANET-lt\hash.h">
+      <Filter>EPANET-lt</Filter>
     </ClInclude>
-    <ClInclude Include="epanet-lt\lemontiger.h">
-      <Filter>epanet-lt</Filter>
+    <ClInclude Include="src\EPANET-lt\lemontiger.h">
+      <Filter>EPANET-lt</Filter>
     </ClInclude>
-    <ClInclude Include="epanet-lt\mempool.h">
-      <Filter>epanet-lt</Filter>
+    <ClInclude Include="src\EPANET-lt\mempool.h">
+      <Filter>EPANET-lt</Filter>
     </ClInclude>
-    <ClInclude Include="epanet-lt\text.h">
-      <Filter>epanet-lt</Filter>
+    <ClInclude Include="src\EPANET-lt\text.h">
+      <Filter>EPANET-lt</Filter>
     </ClInclude>
-    <ClInclude Include="epanet-lt\toolkit.h">
-      <Filter>epanet-lt</Filter>
+    <ClInclude Include="src\EPANET-lt\toolkit.h">
+      <Filter>EPANET-lt</Filter>
     </ClInclude>
-    <ClInclude Include="epanet-lt\types.h">
-      <Filter>epanet-lt</Filter>
+    <ClInclude Include="src\EPANET-lt\types.h">
+      <Filter>EPANET-lt</Filter>
     </ClInclude>
-    <ClInclude Include="epanet-lt\vars.h">
-      <Filter>epanet-lt</Filter>
+    <ClInclude Include="src\EPANET-lt\vars.h">
+      <Filter>EPANET-lt</Filter>
     </ClInclude>
-    <ClInclude Include="DataSource.h" />
-    <ClInclude Include="rngs\rvgs.h">
+    <ClInclude Include="src\DataSource.h" />
+    <ClInclude Include="src\Network.h" />
+    <ClInclude Include="src\VisNetwork.h" />
+    <ClInclude Include="src\VisScadaGenerator.h" />
+    <ClInclude Include="src\SFMT_1.4\SFMT-common.h">
+      <Filter>SFMT_1.4</Filter>
+    </ClInclude>
+    <ClInclude Include="src\SFMT_1.4\SFMT-params.h">
+      <Filter>SFMT_1.4</Filter>
+    </ClInclude>
+    <ClInclude Include="src\SFMT_1.4\SFMT-params19937.h">
+      <Filter>SFMT_1.4</Filter>
+    </ClInclude>
+    <ClInclude Include="src\SFMT_1.4\SFMT-sse2.h">
+      <Filter>SFMT_1.4</Filter>
+    </ClInclude>
+    <ClInclude Include="src\SFMT_1.4\SFMT.h">
+      <Filter>SFMT_1.4</Filter>
+    </ClInclude>
+    <ClInclude Include="src\rngs\rngs.h">
       <Filter>rngs</Filter>
     </ClInclude>
-    <ClInclude Include="Varima.h" />
-    <ClInclude Include="SFMC\SFMT.h">
-      <Filter>sfmt</Filter>
+    <ClInclude Include="src\rngs\rvgs.h">
+      <Filter>rngs</Filter>
     </ClInclude>
-    <ClInclude Include="SFMC\SFMT-common.h">
-      <Filter>sfmt</Filter>
-    </ClInclude>
-    <ClInclude Include="SFMC\SFMT-params.h">
-      <Filter>sfmt</Filter>
-    </ClInclude>
-    <ClInclude Include="SFMC\SFMT-params19937.h">
-      <Filter>sfmt</Filter>
-    </ClInclude>
-    <ClInclude Include="SFMC\SFMT-sse2.h">
-      <Filter>sfmt</Filter>
-    </ClInclude>
-    <ClInclude Include="clapack.h" />
-    <ClInclude Include="f2c.h" />
-    <ClInclude Include="vtkincludes.h" />
   </ItemGroup>
   <ItemGroup>
-    <Filter Include="epanet-lt">
-      <UniqueIdentifier>{dbb80168-7dbb-4845-85fd-2a095b042a3f}</UniqueIdentifier>
+    <Filter Include="EPANET-lt">
+      <UniqueIdentifier>{32309f82-ae2d-4a7d-b013-71bd5d2e928b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="iniParser_3.1">
+      <UniqueIdentifier>{f9b0d529-77da-48b2-8d41-62268dab16f4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="SFMT_1.4">
+      <UniqueIdentifier>{4aa6fb2c-eb76-4f1b-a0be-0e6d46f566e5}</UniqueIdentifier>
     </Filter>
     <Filter Include="rngs">
-      <UniqueIdentifier>{f23e0b13-841f-41a4-8ecf-d704c83f987d}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="sfmt">
-      <UniqueIdentifier>{aac10b63-13de-4967-8ec7-ce79d3ed404b}</UniqueIdentifier>
+      <UniqueIdentifier>{f5cd5902-e555-4b8f-984b-4957e8d484c8}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>

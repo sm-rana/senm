@@ -21,6 +21,7 @@
     <ClCompile Include="..\src\Varima.cpp" />
     <ClCompile Include="TestVarima.cpp" />
     <ClCompile Include="..\src\Population.cpp" />
+    <ClCompile Include="..\src\ewi.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\src\rngs\rngs.h">
@@ -46,5 +47,6 @@
     </ClInclude>
     <ClInclude Include="..\src\Population.h" />
     <ClInclude Include="..\src\Varima.h" />
+    <ClInclude Include="..\src\SenmCoreIncs.h" />
   </ItemGroup>
 </Project>

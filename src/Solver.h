@@ -24,11 +24,11 @@ threads at the same time.
 /* Instances of the Solver class is able to read private members of the singleton 
 Network (friend class), however, to ensure other Solver's hydraulic simulation is not 
 interfered, don't change the Network's internal data*/
-class Solver
+struct Solver
 {
-public:  // Error and warning facilities
+// Error and warning facilities
 	/// Error Codes
-	enum ECode {
+	enum EWICode {
 		OK, 
 		NETWORK_NOT_EXIST,
 		MALLOC_ERROR,
@@ -38,88 +38,45 @@ public:  // Error and warning facilities
 		NO_F_PUMP_GPV,
 		NO_B_PUMP_GPV,
 		NO_V_TCV_FCV,
-		JUNC_CHAN_MINDEX_ERR,
-		TANK_CHAN_MINDEX_ERR,
-		VALVE_CHAN_MINDEX_ERR,
-		PUMP_CHAN_MINDEX_ERR,
-		PIPE_CHAN_MINDEX_ERR,
+		CHAN_MINDEX_ERR,
 
-		LAST_DUMMY_E
-	}; 
-	/// Warning Codes
-	enum WCode {
-		NONE,
-		NO_CHANNELS,
+        NO_CHANNELS,
 		DUP_CHANNELS,
 		D_CHANNEL_AT_TANK,
 		FCV_REPLACED_BY_TCV,
 		NOT_ENOUGH_XD,
 		TOO_MANY_XD,
         B_EMITTER_CONFLICT,
+
         EQN_ILL_COND,
         VALVE_CAUSE_ILL_COND,
+        UNABLE_TO_SOLVE,
         MAX_ITER_REACHED,
         CV_PSV_PRV_PROB,
 
-		LAST_DUMMY_W
-	};
-	/// Warning record
-	struct Warn {
-		WCode wc; ///> warn code
-		Network::FieldType ctype; ///> component type
-		int cindex; ///> component index (epanet)
-		Warn(): wc(NONE), ctype(Network::UNKNOWN), cindex(0) {}; ///>default contructor
-		///> trivial constructor
-		Warn(WCode wc_in, Network::FieldType ctype_in, int cindex_in=0):
-			wc(wc_in), ctype(ctype_in), cindex(cindex_in) {};
-		///> constructor with only WCode specified
-		Warn(WCode wc_in) : wc(wc_in), ctype(Network::UNKNOWN), cindex(0) {};
-	};
-	/// Error record
-	struct Error {
-		ECode ec; ///>Creation time error
-		Network::FieldType ctype; ///>Creation time error component type
-		int cindex;  ///Creation time error index (epanet)
-		Error(): ec(OK), ctype(Network::UNKNOWN), cindex(0) {}; ///>default contructor
+		LAST_DUMMY_EWI
 	};
 
+    /// > reporting error, warning, and information messages
+    static void reportEWI(EWICode err, unsigned thdN = 0);
+	static void reportEWI(EWICode err, Network::ComponentType ctype, int id1, int id2, unsigned thdN = 0);
+	static void reportEWI(EWICode err, Network::ComponentType ctype, int id1, unsigned thdN = 0);
 
-
-	static Error errorC; ///>creation-time error
-
-	/// @{
-	/// Look up the text explanation of an error or a warning
-	/** \param[in]   err/warn   Error or warning code.
-	\param[out]   txt      A tchar string pre-allocated to be filled with info
-	*/
-	static void fillEWinfo(Error err, TCHAR* txt);
-	static void fillEWinfo(Warn warn, TCHAR* txt);
-	/// @}
-
-protected:
-    ///Creation-time warning list, the list is built during solver creation
-    /// and never emptied
-	std::list<Warn> _warnListC; 
-    ///>Run-time warning list, the list is re-built with each hydraulic simulation
-	std::list<Warn> _warnListR; 
-
-public: // creation and destruction
+// creation and destruction
 	///> Factory method.
 	/** Create a hydraulic solver for a given network-data source pair,
 	\param[in] net    Network instance representing infrastructure
 	\param[in] ds    Data source representing SCADA database for control and monitoring data
-	\param[out] outsolver    Pointer to where the point to the new Solver instance is stored.
+    \param[in] thdN   thread id 
+	\param[out] outsolver    Pointer to where the pointer to the new Solver instance is stored.
 	\return   Error information in creating the solver
 	*/
-	static ECode createSolver(Network* net, DataSource* ds, Solver** outsolver);
-
-	/// Report solver creation error
-	static void reportCreationError(); 
+	static EWICode createSolver(Network* net, DataSource* ds, unsigned thdN, Solver** outsolver);
 
 	// free memory
 	~Solver();
 
-public:    //solver functionalities
+//solver functionalities
 
 	/// Solve the hydraulic equations 
 	/** \param [in]  xd  pointer to an array of stochastic demands. 
@@ -128,11 +85,7 @@ public:    //solver functionalities
 	   \return   Number of run-time warnings issued 
 	   \sa report()
    */
-	int run(double* xd, int nXd);
-
-	/// report all warnings in the both warning list to stderr. 
-	void report();
-
+	void run(double* xd, int nXd);
 
 	// compute log likelihood of hydraulic measurements given 
 	// the simulation results. If Snapshot is not provided, use the previously
@@ -149,16 +102,16 @@ public:    //solver functionalities
 
 
 
-protected:   //members
-	// the network
+	/// the network
 	Network* _net;
 
-	// the datasource registered
+	/// the datasource registered
 	DataSource* _ds;
 
 
-protected:
+    unsigned threadN;  ///> which thread the solver is running in?
 	int N, M;  //Node counts, link counts
+
 
 	// Channel availability table, 1 ~ N: node; N+1 ~ N+M: link
 	Channel::Type  *_tabCAT; 
@@ -181,12 +134,6 @@ protected:
 	double RQtol;  /* hydraulics parameters  */
 //    double RelaxFactor;  // Relaxation factor for the iterative solver (flow)
 //	double DampLimit; // if residual error is less than it, will decrease Ralaxation
-
-	// constants
-	//static const double MISSING, QZERO;
-    static const double CBIG, CSMALL;
-    // constants for DW hydraulic equation
-    static const double A1, A2, A3, A4, A8, A9, AA, AB, AC;
 
 	double Hexp;    /* Exponent in headloss formula */
 
@@ -227,7 +174,6 @@ public:
         CLOSED, ///> closed, but may be opened in subsequent iterations
         DISABLED, ///> keep closed
 	};
-protected:
 	LinkStatus     *S;                    /* Link status                  */
 
 	// Sparse matrix solver, XLNZ, NZSUB, and LNZ are fixed and thus stored in Network class
@@ -239,8 +185,6 @@ protected:
 
     double  *B;  ///> B channel data (discharge-side pressure)
 
-protected:
-	Solver(); //no public constructor
 
 	void initlinkflow(int link, char status, double setting);
 
@@ -270,8 +214,8 @@ protected:
     void valvecoeffs();
 
     /// @}
-	double SGN(double x) {return (x<0?-1:1);};
-	double SQR(double x) {return x*x;};
+//	double SGN(double x) {return (x<0?-1:1);};
+//	double SQR(double x) {return x*x;};
     
     ///> iterative solver
     int linsolve(int n ,double* Aii, double* Aij, double *B);
@@ -292,6 +236,8 @@ protected:
 
 
 
+protected:
+	Solver(); //no public constructor
 
 };
 

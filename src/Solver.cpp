@@ -15,21 +15,6 @@ for more details.   */
 #include "Network.h"
 #include "Solver.h"
 
-const double Solver::CBIG = 1e8;
-const double Solver::CSMALL = 1e-6;
-
-
-/* Constants used for computing Darcy-Weisbach friction factor */
-const double Solver::A1 = .314159265359e04;  /* 1000*PI */
-const double Solver::A2 = 0.157079632679e04;  /* 500*PI  */
-const double Solver::A3 = 0.502654824574e02;  /* 16*PI   */
-const double Solver::A4 = 6.283185307      ;  /* 2*PI    */
-const double Solver::A8 = 4.61841319859    ;  /* 5.74*(PI/4)^.9 */
-const double Solver::A9 = -8.685889638e-01 ;  /* -2/ln(10)      */
-const double Solver::AA = -1.5634601348    ;  /* -2*.9*2/ln(10) */
-const double Solver::AB = 3.28895476345e-03;  /* 5.74/(4000^.9) */
-const double Solver::AC = -5.14214965799e-03; /* AA*AB */
-
 
 Solver::Solver()  {//setdefaults() in input1.c 
 	Htol = 0.005;   /* Default head tolerance         */
@@ -63,36 +48,26 @@ Solver::~Solver() {
 }
 
 
-Solver::ECode Solver::createSolver(
-	Network* net, DataSource* ds, Solver** outsolver) {
-
-		//reset error and warn variables
-		errorC.ec = OK;
-		errorC.ctype = Network::UNKNOWN;
-		errorC.cindex = 0;
-		std::list<Warn> warnList;
+Solver::EWICode Solver::createSolver(
+	Network* net, DataSource* ds, unsigned thdN, Solver** outsolver) {
+        EWICode err = OK;
+        Solver* prec = NULL;
 
 		// check network
 		if (net == NULL) {
-			*outsolver = NULL;
-			errorC.ec = NETWORK_NOT_EXIST;
-			return (errorC.ec);
+            reportEWI(err = NETWORK_NOT_EXIST, thdN); goto END;
 		} else if (net->_ecCur != OK) {
-			*outsolver = NULL;
-			errorC.ec = NETWORK_NOT_READY;
-			return (errorC.ec);
+            reportEWI(err = NETWORK_NOT_READY, thdN); goto END;
 		}
 		// check datasource
 		if (ds == NULL) {
-			*outsolver = NULL;
-			errorC.ec = DS_NOT_EXIST;
-			return errorC.ec;
+			reportEWI(err = DS_NOT_EXIST, thdN); goto END;
 		} 
 
 		int nChan = ds->n_chan;
 
 		if (nChan == 0) { //no channels
-			warnList.push_back(Warn(NO_CHANNELS, Network::UNKNOWN, 0));
+			reportEWI(NO_CHANNELS); 
 		}
 
 		// load channel availability table
@@ -108,128 +83,105 @@ Solver::ECode Solver::createSolver(
 		for (Channel* iChan = lsChan; iChan; iChan = iChan->next) {
 			// duplicated channels
 			int idx = iChan->mindex;
+            int chid = iChan->key;
 			if (unsigned(iChan->type) & unsigned(tabCAT[idx])) {
-				warnList.push_back(Warn(DUP_CHANNELS, Network::UNKNOWN, idx));
+				reportEWI(DUP_CHANNELS, thdN);
 				continue;
 			}
 
 			switch (iChan->type) {
-			case Channel::D: 
-			case Channel::P:
+			case Channel::D: case Channel::P:
 				if (idx <=0 || idx > net->MaxJuncs) {
-					errorC.ec = JUNC_CHAN_MINDEX_ERR;
+                    reportEWI(err = CHAN_MINDEX_ERR, Network::JUNC, idx, chid, thdN);
 				}
 				break;
 			case Channel::L: 
 				if (idx <= net->MaxJuncs || idx > net->MaxNodes) {
-					errorC.ec = TANK_CHAN_MINDEX_ERR;
+					reportEWI(err = CHAN_MINDEX_ERR, Network::TANK, idx, chid, thdN);
 				}
 				break;
 			case Channel::V: 
 				if (idx <= net->MaxPipes + net->MaxPumps 
 					|| idx > net->MaxLinks) {
-						errorC.ec = VALVE_CHAN_MINDEX_ERR;
+                    reportEWI(err = CHAN_MINDEX_ERR, Network::TCV, idx, chid, thdN);
 				}
 				break;
-			case Channel::A: 
-			case Channel::B: 
+            case Channel::A: case Channel::B: 
+				if (idx <=0 || idx > net->MaxNodes) {
+                    reportEWI(err = CHAN_MINDEX_ERR, Network::JUNC, idx, chid, thdN);
+				}
+                break;
 			case Channel::F: 
 				if (idx <= net->MaxPipes || 
 					idx > net->MaxPipes + net->MaxPumps) {
-						errorC.ec = PUMP_CHAN_MINDEX_ERR;
+                    reportEWI(err = CHAN_MINDEX_ERR, Network::PUMP, idx, chid, thdN);
 				}
 				break;
-			case Channel::C: 
-			case Channel::Q: 
+			case Channel::C: case Channel::Q: 
 				if (idx <= 0 || 
-					idx > net->MaxPipes) {
-						errorC.ec = PIPE_CHAN_MINDEX_ERR;
+					idx > net->MaxLinks) {
+                    reportEWI(err = CHAN_MINDEX_ERR, Network::PIPE, idx, chid, thdN);
 				}
 				break; 
 			}
-
-			if (errorC.ec != OK) return errorC.ec;
-
+			if (err != OK) goto END;
 
 			switch (iChan->type) {
 			case Channel::NONE:
 				break; //do nothing
 			case Channel::D: //node
 				++ nCd;  // go through
-			case Channel::L: 
-			case Channel::P: 
+			case Channel::L: case Channel::P: case Channel::B: case Channel::A:
 				tabCAT[idx] = Channel::Type(
 					unsigned(tabCAT[idx]) | unsigned(iChan->type));
 				break;
 			default: //link
-				tabCAT[idx+M] = Channel::Type(
-					unsigned(tabCAT[idx+M]) | unsigned(iChan->type));
+				tabCAT[idx+N] = Channel::Type(
+					unsigned(tabCAT[idx+N]) | unsigned(iChan->type));
 			}
 		}
 
 		//Check data source /channel list integrity
 		// 1. Tank/Reservoir must have [L] channel,
-		int errorFlag = 0;
 		for (int iTank = 1; iTank <= net->MaxTanks; ++ iTank) {
 			int tpNode = net->Tank[iTank].Node;
-			if ((unsigned(tabCAT[tpNode]) & unsigned(Channel::D)) == 1) {
-				warnList.push_back(Warn(D_CHANNEL_AT_TANK, Network::DEMAND, tpNode));
+			if (unsigned(tabCAT[tpNode]) & unsigned(Channel::D) ) {
+				reportEWI(D_CHANNEL_AT_TANK, Network::TANK, tpNode, thdN);
 				--nCd;
 			}
 			if ((unsigned(tabCAT[tpNode]) & unsigned(Channel::L)) == 0) {
-				errorFlag = 1;
-				errorC.ec = NO_L_TANK;
-				errorC.cindex = tpNode;
-				errorC.ctype = Network::HEAD;
-				break;
+                reportEWI(err = NO_L_TANK, Network::TANK, tpNode, thdN);
+                goto END;
 			}
 		}
 
 		// 2. Pump/GPV must have [F] and [B] channel,
-		if (!errorFlag) for (int iPG = 0; iPG< net->nPumpGPV; ++iPG) {
+		for (int iPG = 0; iPG< net->nPumpGPV; ++iPG) {
 			int tpLink = net->tPumpGPV[iPG];
+            int tpN2 = net->Link[tpLink].N2;
 			if ( (unsigned(tabCAT[N+tpLink]) & unsigned(Channel::F)) ==0 ) {
-				errorFlag = 1;
-				errorC.ec = NO_F_PUMP_GPV;
-				errorC.cindex = tpLink;
-				errorC.ctype = Network::FLOW;
-				break;
+                reportEWI(err = NO_F_PUMP_GPV, Network::PUMP, tpLink, thdN);
+                goto END;
 			}
-			if ( (unsigned(tabCAT[N+tpLink]) & unsigned(Channel::B)) ==0 ) {
-				errorFlag = 1;
-				errorC.ec = NO_B_PUMP_GPV;
-				errorC.cindex = tpLink;
-				errorC.ctype = Network::PRESSURE;
-				break;
+			if ( (unsigned(tabCAT[tpN2]) & unsigned(Channel::B)) ==0 ) {
+                reportEWI(err = NO_B_PUMP_GPV, Network::PUMP, tpLink, thdN);
+                goto END;
 			}
             if (net->Node[net->Link[tpLink].N2].Ke != 0) {
-				warnList.push_back(Warn(B_EMITTER_CONFLICT, Network::FLOW, tpLink));
+				reportEWI(B_EMITTER_CONFLICT, Network::PUMP, tpLink, thdN);
 			}
 
 		}
 		// 3. TCV/TFV must have [V] Channel
-		if  (!errorFlag) for (int iTFV = 0; iTFV<net->nTFV; ++iTFV) {
+		for (int iTFV = 0; iTFV<net->nTFV; ++iTFV) {
 			int tpLink = net->tTFV[iTFV];
-			//			if (net->Link[tpLink].Type == Network::FCV) { // fcv modeled by tcv
-			//				warnList.push_back(Warn(FCV_REPLACED_BY_TCV, Network::SETTING, tpLink));
-			//			}
 			if ( (unsigned(tabCAT[N+tpLink]) & unsigned(Channel::V)) ==0 ) {
-				errorFlag = 1;
-				errorC.ec = NO_V_TCV_FCV;
-				errorC.cindex = tpLink;
-				errorC.ctype = Network::SETTING ;
-				break;
+                reportEWI(err = NO_V_TCV_FCV, Network::TCV, tpLink, thdN); goto END;
 			}
 		}
 
-		if (errorFlag) {// channel list error happens
-			delete[] tabCAT;
-			return errorC.ec;
-		}
-
 		// Build a solver
-		Solver *prec = new Solver(); //solver precursor
-		prec->_warnListC = warnList;
+		prec = new Solver(); //solver precursor
 		prec->_net = net;
 		prec->_ds = ds;
 
@@ -248,7 +200,7 @@ Solver::ECode Solver::createSolver(
 		prec->H =  (double *) calloc(n, sizeof(double));
 
 		prec->_tabXd = (int*) calloc(prec->_nXd, sizeof(int)); 
-		prec->_tabIdx2Xd = (int*) calloc(net->MaxJuncs, sizeof(int));
+		prec->_tabIdx2Xd = (int*) calloc(net->MaxJuncs + 1, sizeof(int));
 		prec->Aii = (double *) calloc(n,sizeof(double));
 		prec->Aij = (double *) calloc(net->Ncoeffs+1,sizeof(double));
 		prec->F   = (double *) calloc(n,sizeof(double));
@@ -266,9 +218,7 @@ Solver::ECode Solver::createSolver(
 
 		if (prec->D==NULL || prec->H==NULL || prec->Q==NULL || 
 			prec->K==NULL || prec->S==NULL) {
-				delete(prec);
-				*outsolver = NULL;
-				return(MALLOC_ERROR);
+                reportEWI(err = MALLOC_ERROR, thdN); goto END;
 		}
 
 		// Prepare stochastic demand (xd) indexing array
@@ -302,97 +252,82 @@ Solver::ECode Solver::createSolver(
 		if (net->Formflag == Network::HW) prec->Hexp = 1.852;
 		else                prec->Hexp = 2.0;
 
-
+        // set thread number
+		prec->threadN = thdN;
 
 
 		*outsolver = prec;
 		return OK;
+
+END:
+        if (tabCAT!=NULL) delete[] tabCAT;
+        if (prec!=NULL) delete prec;
+        *outsolver = NULL;
+        return err;
 }
 
-void Solver::fillEWinfo(Error err, TCHAR* txt) {
-	TCHAR texts[LAST_DUMMY_E][512] = {
+//void Solver::fillEWinfo(Error err, TCHAR* txt) {
+
+void Solver::reportEWI(EWICode code, unsigned thdN) {
+	return reportEWI(code, Network::UNDETERMINED, 0, 0, thdN);
+}
+void Solver::reportEWI(EWICode code, Network::ComponentType ctype, int id1, unsigned thdN) {
+	return reportEWI(code, Network::UNDETERMINED, id1, 0, thdN);
+}
+void Solver::reportEWI(EWICode code, Network::ComponentType ctype, int id1, int id2, unsigned thdN){
+	TCHAR texts[LAST_DUMMY_EWI][MAX_ERR_STRING_SIZE] = {
 		TEXT("OK."), 
 		TEXT("The Network is invalid. Load inp file to the network first."),
 		TEXT("Can not allocate memory for Solver."), 
 		TEXT("The network contains errors."), 
 		TEXT("The data source does not exist or is not ready."), 
-		TEXT("A tank does not have a [L] channel of current water level."), 
-		TEXT("A pump or GPV does not have a [F] channel of current flowrate."), 
-		TEXT("A pump or GPV does not have a [B] channel showing"
-		"discharge-side pressure or pressure head."  ), 
-		TEXT("A TCV or TFV does not have a [V] channel showing"
-		"minor headloss setting.")
-        
-	};
+		TEXT("Tank %d does not have a [L] channel for its current water level."), 
+		TEXT("Pump or GPV %d does not have a [F] channel of current flowrate."), 
+		TEXT("Pump or GPV %d does not have a [B] channel showing")
+                TEXT("discharge-side pressure or pressure head."  ), 
+		TEXT("TCV or TFV %d does not have a [V] channel showing")
+                TEXT("minor headloss setting."),
+        TEXT("Could not find the network index %d for Channel %d."), 
 
-	if (txt == NULL) return;
-
-	switch (err.ec) {
-	case OK: case NETWORK_NOT_EXIST: case MALLOC_ERROR: 
-	case NETWORK_NOT_READY: case DS_NOT_EXIST:
-		_tcscpy(txt, texts[err.ec]);
-		break;
-	case NO_L_TANK: case NO_F_PUMP_GPV: case NO_B_PUMP_GPV:
-	case NO_V_TCV_FCV:
-		_stprintf(txt, TEXT("(Net Index %d) %s"), texts[err.ec], err.cindex);
-		break;
-	}
-
-}
-
-void Solver::reportCreationError() {
-	TCHAR tptxt[512];
-	if (errorC.ec != OK) {
-		fillEWinfo(errorC, tptxt);
-		_ftprintf(stderr, TEXT("%s\n"), tptxt);
-		return;
-	}
-}
-
-
-void Solver::report() {
-
-	TCHAR tptxt[512];
-    for (std::list<Warn>::iterator iWarn; iWarn != _warnListC.end(); ++ iWarn) {
-		fillEWinfo(*iWarn, tptxt);
-		_ftprintf(stderr, TEXT("%s\n"), tptxt);
-	}
-	for (std::list<Warn>::iterator iWarn; iWarn != _warnListR.end(); ++ iWarn) {
-		fillEWinfo(*iWarn, tptxt);
-		_ftprintf(stderr, TEXT("%s\n"), tptxt);
-	}
-}
-
-
-void Solver::fillEWinfo(Warn warn, TCHAR* txt) {
-	TCHAR texts[LAST_DUMMY_W][512] = {
-		TEXT("OK."), 
-		TEXT("No channels loaded."),
+ 		TEXT("No channels loaded."),
 		TEXT("Multiple channels refer to the same measurement."),
-		TEXT("A [D] channel is assigned to a tank/reservoir."),
-		TEXT("An FCV is in the network. will be replaced by a TCV."
-		"(i.e., changeable minor headloss)"),
-		TEXT("Not enough realizations of stochastic demands provided to the "
-		"solver, will use baseline demand instead."),
-		TEXT("Too many demand realizations provided to the solver. only the "
-		"first nxd of them will be used.")
-        TEXT("Channel B in the node conflicts with an emitter setting."),
-        TEXT("Hydraulic equation can not be solved due to ill-conditions."),
+		TEXT("A [D] channel is assigned to a tank/reservoir (index %d)."),
+		TEXT("An FCV (index %d) is in the network. will be replaced by a TCV.")
+                TEXT("(i.e., changeable minor headloss)"),
+		TEXT("Not enough realizations of stochastic demands provided to the ")
+                TEXT("solver, will use baseline demand instead."),
+		TEXT("Too many demand realizations provided to the solver. only the ")
+                TEXT("first nxd of them will be used.")
+        TEXT("Channel B (index %d) in the node conflicts with an emitter setting."),
+
+        TEXT("Hydraulic equation can not be solved due to ill-conditions around node %d."),
         TEXT("PRV/PSV causing ill conditionality in the hydraulic equations."),
+        TEXT("Hydraulic equations are unable to solve."),
         TEXT("Maximum number of iterations reached. cannot find a solution."),
-        TEXT("Potential CV/PSV/PRV periodic problem")
+        TEXT("Potential CV/PSV/PRV cyclic problem.")
 	};
 
-	if (txt == NULL) return;
+	TCHAR txt[MAX_ERR_STRING_SIZE+MAX_ERR_PREFIX_SIZE];
+	TCHAR tmptxt[MAX_ERR_STRING_SIZE+MAX_ERR_PREFIX_SIZE];
+//	TCHAR ctype_str[MAX_NET_CTYPE_STR_SIZE];
 
-	switch (warn.wc) {
-	case NONE: case NO_CHANNELS: case DUP_CHANNELS: case NOT_ENOUGH_XD:
-	case TOO_MANY_XD:
-		_tcscpy(txt, texts[warn.wc]);
-		break;
+	switch (code) {
+	case NO_L_TANK: case NO_F_PUMP_GPV: case NO_B_PUMP_GPV: case NO_V_TCV_FCV:
+	case D_CHANNEL_AT_TANK: case FCV_REPLACED_BY_TCV: case B_EMITTER_CONFLICT:
+	case EQN_ILL_COND:
+        _stprintf(tmptxt, texts[code], id1);
+        break;
+	case CHAN_MINDEX_ERR:
+        _stprintf(tmptxt, texts[code], id1, id2);
+        break;
 	default:
-		_stprintf(txt, TEXT("(Net Index %d) %s"), texts[warn.wc], warn.cindex);
+        _stprintf(tmptxt, texts[code]);
 	}
+
+    _stprintf(txt, TEXT("Solver:%s"), tmptxt);
+
+    return ewi(txt, thdN);
+
 }
 
 //
@@ -406,6 +341,7 @@ void Solver::fillEWinfo(Warn warn, TCHAR* txt) {
 
 void Solver::setLFBVCD() {
 	int iiCh = 0;
+    int nN1 = 0;  int nN2 = 0;
 	for (Channel* iCh = _lsChan; iCh; iCh = iCh->next, ++iiCh) {
 		switch (iCh->type) {
 		case Channel::L: //set tank levels (alt.)
@@ -416,10 +352,10 @@ void Solver::setLFBVCD() {
 			// add inflow to discharge side
 			// add outflow to suction side
 			S[iCh->mindex] = DISABLED; //disable
-			int N1 = _net->Link[iCh->mindex].N1;
-			int N2 = _net->Link[iCh->mindex].N2;
-			D[N1] += _ss[iiCh];
-			D[N2] -= _ss[iiCh];
+			nN1 = _net->Link[iCh->mindex].N1;
+			nN2 = _net->Link[iCh->mindex].N2;
+			D[nN1] += _ss[iiCh];
+			D[nN2] -= _ss[iiCh];
 			break;
 		case Channel::B:
 			// Store data into B temporarily
@@ -428,7 +364,7 @@ void Solver::setLFBVCD() {
 		case Channel::V:
 			if (_ss[iiCh] == -1) { //FCV or TCV closed
 				S[iCh->mindex] = DISABLED;
-				K[iCh->mindex] == CBIG;
+				K[iCh->mindex] = CBIG;
 			} else { //open, set minor head loss coeff
 				S[iCh->mindex] = PARTIAL;
 				K[iCh->mindex] = _ss[iiCh];
@@ -450,27 +386,20 @@ void Solver::setLFBVCD() {
 	}
 }
 
-int Solver::run(double *xd, int nXd) {
-	// clean run-time warning list
-	_warnListR.clear();
-
-	// set channel data for Channels [L][F][B][V][C][D]
-	setLFBVCD();
+void Solver::run(double *xd, int nXd) {
 
 	// set xd using demands 
 	if (nXd < _nXd) { // less water demands provided
 		for (int ixd = 0; ixd < nXd; ++ixd) {
 			D[_tabXd[ixd]] += xd[ixd];
 		}
-
-		_warnListR.push_back(Warn(NOT_ENOUGH_XD));
+        reportEWI(NOT_ENOUGH_XD, threadN);
 	} else {
 		for (int ixd = 0; ixd < this->_nXd; ++ixd) {
 			D[_tabXd[ixd]] += xd[ixd];
 		}
-
 		if (nXd > _nXd) { // more xd provided
-			_warnListR.push_back(Warn(TOO_MANY_XD));
+            reportEWI(TOO_MANY_XD, threadN);
 		}
 	}
 
@@ -490,16 +419,19 @@ int Solver::run(double *xd, int nXd) {
 		if (S[i] == CLOSED || S[i] == DISABLED) Q[i] = CSMALL;
 		else if (abs(Q[i]) <= CSMALL)
 			// init to 1 fps for regular pipes
-			Q[i] = Network::_PI*pow(_net->Link[i].Diam, 2)/4.0;
+			Q[i] = _PI*pow(_net->Link[i].Diam, 2)/4.0;
 	}
 
-	/* Initialize emitter flows */
+	// set channel data for Channels [L][F][B][V][C][D]
+	setLFBVCD();
+
+	/* Initialize emitter flows to 1 fps */
 	for (int i=1; i<=_net->Njuncs; i++)
 		if (_net->Node[i].Ke > 0.0) E[i] = 1.0;
 
 	// run hydraulic simulation, netsolve() in hydraul.c
     int probNode; // link causing ill-conditionality
-    double newerr;  // error between subsequent iterations
+    double newerr = 0;  // error between subsequent iterations
     int statChange;  // valve change flag
     int iter = 0;
 
@@ -510,15 +442,13 @@ int Solver::run(double *xd, int nXd) {
 
 		probNode = linsolve(_net->Njuncs, Aii, Aij, F); // sparse linear solver
 
-        if (probNode>0) { // check of ill-conditionality
-			_warnListR.push_back(
-				Warn(EQN_ILL_COND, Network::PRESSURE, probNode));
-
+        if (probNode>0) { // check for ill-conditionality
+            reportEWI(EQN_ILL_COND, Network::UNDETERMINED, probNode, threadN);
             if (badvalve(_net->Order[probNode])) { // a valve caused it
-                _warnListR.push_back(
-					Warn(VALVE_CAUSE_ILL_COND, Network::SETTING, probNode));
+                reportEWI(VALVE_CAUSE_ILL_COND, threadN);
                 continue;
 			} else {// trouble in lin solver 
+				reportEWI(UNABLE_TO_SOLVE, threadN);
                break;
 			}
 		}
@@ -532,19 +462,17 @@ int Solver::run(double *xd, int nXd) {
 
         ++iter;
         if (iter > MaxIter ) {
-			_warnListR.push_back( Warn(MAX_ITER_REACHED));
+			reportEWI(MAX_ITER_REACHED);
             if (statChange) 
-				_warnListR.push_back( Warn(CV_PSV_PRV_PROB));
+				reportEWI(CV_PSV_PRV_PROB);
             break;
 		}
 	} while (newerr < Hacc);
 
    /* Add any emitter flows to junction demands */
    for (int i=1; i<=_net->Njuncs; i++) D[i] += E[i];
-
-   return _warnListR.size();
-
 }
+
 int  Solver::linkstatus()
 /*
 **--------------------------------------------------------------
@@ -846,7 +774,7 @@ double  Solver::emitflowchange(int i)
 }
 
 
-int  Solver::badvalve(int n)
+int  Solver::badvalve(int n) {
 /*  originally in hydraulic.c
 **-----------------------------------------------------------------
 **  Input:   n = node index                                                
@@ -858,24 +786,18 @@ int  Solver::badvalve(int n)
 **           is generated.
 **-----------------------------------------------------------------
 */
-{
    int i,k,n1,n2;
-   for (i=1; i<=_net->Nvalves; i++)
-   {
+   for (i=1; i<=_net->Nvalves; i++) {
       k = _net->Valve[i].Link;
       n1 = _net->Link[k].N1;
       n2 = _net->Link[k].N2;
-      if (n == n1 || n == n2)
-      {
+      if (n == n1 || n == n2) {
          if (_net->Link[k].Type == Network::PRV ||
-             _net->Link[k].Type == Network::PSV )
-         {
-            if (S[k] == Network::ACTIVE)
-            {
-
-                S[k] = Network::OPEN; // force open
-               return(1);
-            }
+             _net->Link[k].Type == Network::PSV ) {
+                if (S[k] == PARTIAL || S[k] == CLOSED) {
+                    S[k] = FULL_OPEN; // force open
+                   return(1);
+                }
          }
          return(0);
       }
@@ -1333,7 +1255,7 @@ double Solver::DWcoeff(int k, double *dfdq)
 	*dfdq = 0.0;
 	if (_net->Link[k].Type > Network::PIPE) return(1.0); /* Only apply to pipes */
 	q = abs(Q[k]);
-	s = Network::Viscos*_net->Link[k].Diam;
+	s = Viscos*_net->Link[k].Diam;
 	w = q/s;                       /* w = Re(Pi/4) */
 	if (w >= A1)                   /* Re >= 4000; Colebrook Formula */
 	{
@@ -1370,31 +1292,27 @@ double Solver::DWcoeff(int k, double *dfdq)
 	return(f);
 }                        /* End of DWcoeff */
 
+//
+//void  Solver::nodecoeffs()
+//	/*
+//	**----------------------------------------------------------------
+//	**  Input:   none                                                
+//	**  Output:  none                                                
+//	**  Purpose: completes calculation of nodal flow imbalance (X)   
+//	**           & flow correction (F) arrays                        
+//	**----------------------------------------------------------------
+//	*/
+//{
+//	int   i;
 
-void  Solver::nodecoeffs()
-	/*
-	**----------------------------------------------------------------
-	**  Input:   none                                                
-	**  Output:  none                                                
-	**  Purpose: completes calculation of nodal flow imbalance (X)   
-	**           & flow correction (F) arrays                        
-	**----------------------------------------------------------------
-	*/
-{
-	int   i;
-
-	/* For junction nodes, subtract demand flow from net */
-	/* flow imbalance & add imbalance to RHS array F.    */
-	for (i=1; i<=_net->Njuncs; i++)
-	{
-		X[i] -= D[i];
-		F[_net->Row[i]] += X[i];
-	}
-}                        /* End of nodecoeffs */
-
-
-//const double Solver::MISSING = -1.0E-10;
-//const double Solver::QZERO = 1.e-6;
+//	/* For junction nodes, subtract demand flow from net */
+//	/* flow imbalance & add imbalance to RHS array F.    */
+//	for (i=1; i<=_net->Njuncs; i++)
+//	{
+//		X[i] -= D[i];
+//		F[_net->Row[i]] += X[i];
+//	}
+//}                        /* End of nodecoeffs */
 
 int  Solver::linsolve(int n, double *Aii, double *Aij, double *B)
 /*
@@ -1551,37 +1469,3 @@ ENDLINSOLVE:
    free(first);
    return(errcode);
 }                        /* End of linsolve */
-
-
-#ifdef TEST_SOLVER
-
-int main() {
-
-	std::cout << "Test Class Solver and Network. \n";
-	Network *testnet;  Solver* asolver;
-	Network::ECode ec = Network::OK;
-	Solver::ECode ecs = Solver::OK;
-
-	if (ec = Network::getNetwork("test\\Net3.inp", testnet)) {
-		std::cout << "Can not create the network: " << ec << "\n";
-		return 1;
-
-		if (ecs = Solver::createSolver(testnet, asolver)) {
-			std::cout << "Cannot create the solver: " << ecs << "\n";
-			return 2;
-		}
-
-		ecs = asolver->setSnapshot(NULL);
-		if (ecs != Solver::OK)  
-			std::cout << "set controls error: " << ecs << "\n";
-
-		ecs = asolver->solveHyd(NULL);
-		if (ecs != Solver::OK)  
-			std::cout << "solving hydraulics error: " << ecs << "\n";
-
-
-
-
-
-	}
-#endif

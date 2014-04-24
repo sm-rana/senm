@@ -24,6 +24,7 @@ src/  -- C/C++ source code and compile-time dependencies
   iniParser_3.1 -- ini file parser [source files]
   EPANET-lt/ -- EPANET 2 with Lemon Tiger extension [source files]
   VTK_5.10.1/ -- Visualization toolkit [headers only]
+  VTK_5.10.1_gen/ -- Visualization toolkit generated files [headers only]
   clapack_3.2.1/ -- LAPACK in C [headers only]
 
 tests/ -- Tests and examples 

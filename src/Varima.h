@@ -98,8 +98,11 @@ protected:
 		CANT_ALLOC_MEM,
 		COV_NOT_POSITIVE_DEF,
 		INVALID_PTR,
-		GEN_ERROR
-	
+		GEN_ERROR,
+        INIT_SIZE_TOO_SMALL,
+        LOG_INIT_WITH_ZERO,
+
+        DUMMY_LAST
 	};
 
     ///combinational number calculation/lookup
@@ -108,25 +111,27 @@ protected:
 private:
 	Varima() {};  //can not instantiate w/o parameters
 public:
+    void reportEWI(Err err);
+    unsigned threadN; ///>thread number, for ewi messages
 	//constructors:  inner-most model
 	Varima(int n_in, int p_in, int q_in):  //ARMA
 		n(n_in), p(p_in), q(q_in), in(NULL) /*inner most*/, d(0), f(0),
 		m(0), pma(-1), pmw(-1), pmz(-1), 
-		s(1),
+		s(1), threadN(0),
 	    phi(NULL), theta(NULL), cov(NULL), lcov(NULL), mean(NULL),
 		ma(NULL), mw(NULL), mz(NULL) {};
 
 	Varima(int n_in, int p_in, int q_in, int d_in):  //ARIMA
 		n(n_in), p(p_in), q(q_in), in(NULL) /*inner most*/, d(d_in), f(0),
 		m(0), pma(-1), pmw(-1), pmz(-1), 
-		s(1),
+		s(1), threadN(0),
 	    phi(NULL), theta(NULL), cov(NULL), lcov(NULL), mean(NULL),
 		ma(NULL), mw(NULL), mz(NULL) {};
 
 	Varima(int n_in, int p_in, int q_in, int d_in, int f_in):  //ARIMA forecaster
 		n(n_in), p(p_in), q(q_in), in(NULL) /*inner most*/, d(d_in), f(f_in),
 		m(0), pma(-1), pmw(-1), pmz(-1), 
-		s(1),
+		s(1), threadN(0),
 	    phi(NULL), theta(NULL), cov(NULL), lcov(NULL), mean(NULL),
 		ma(NULL), mw(NULL), mz(NULL) {}; //
 
@@ -134,12 +139,15 @@ public:
 	Varima(Varima* inin, int p_in, int q_in, int s_in, int d_in): 
 		n(inin->n), p(p_in), q(q_in), in(inin) /*inner most*/, d(d_in), f(inin->f),
 		m(inin->m), pma(-1), pmw(-1), pmz(-1), 
-		s(s_in),
+		s(s_in), threadN(0),
 		phi(NULL), theta(NULL), cov(NULL), lcov(NULL), mean(NULL),
 		ma(NULL), mw(NULL), mz(NULL){};
 
 	/// copy constructors
 	Varima(const Varima& in, int f_in);  //generator->forecaster
+
+    /// look-back window size
+	int getLB() {return s*p+s*d+(in==NULL ?0:in->getLB());};
 
 	/// get s, s>0 means a outer model
 	int getS() {return s;}; 
@@ -264,11 +272,16 @@ public:
 
 	//  for both the generator and the forecaster
 
-	/** initialize state info use z0, z0 must be a pointer array to 
+	/** initialize state info use z0, z0 must be a pointer array with n rows to 
 	  'size' columns or NULL (init with 0's); */
-	Err initStateG(Rvgs* rg_in, double** z0, int z0_col_size);  
-	//Err initStateLogG(Rvgs* rg_in, double** z0, int size);  //log(z0) is used to init
 
+	Err initStateLogG(Rvgs* rg_in, double** z0, int size) {
+        return initStateG(rg_in, z0, size, 1);
+	};  //log(z0) is used to init
+
+	Err initStateG(Rvgs* rg_in, double** z0, int z0_col_size, int bLog=0);  
+
+	Err initStateG(Rvgs* rg_in, double* z0, int z0_col_size);  
 
     /// time series data generation
 	/** parameters of the models must be set already by setPara()
