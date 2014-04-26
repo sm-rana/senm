@@ -177,6 +177,7 @@ SG_ERR _loadNetAndDb(TCHAR* inpfile, char const* ini_path, ScadaGenerator** sg_o
 		}
 		prec->ntstep++;
 	}
+    ENcloseH();
 
 	// 2. prepare db connection
 	if (ini_path) {
@@ -314,7 +315,7 @@ SG_ERR SG_make(ScadaGenerator *sg, Tstamp* t0_in, int timespan) {
 
 	// repeatedly run simulation until timespan is met
 	for (iround = 0; iround < timespan/sg->dur + 1; iround++ ) 
-		for (ENinitH(0), step=1, 
+		for (ENopenH(), ENinitH(0), step=1, 
 			/*  reset the hydraulic engine, here we assume the original network 
 			has been calibrated so that the tank levels at the end of simulation
 			match those at the beginning of the simulation */
@@ -329,9 +330,6 @@ SG_ERR SG_make(ScadaGenerator *sg, Tstamp* t0_in, int timespan) {
 
 		if (stime == sg->dur) break; //don't compute last snapshot-will overlap with next round
 		scada_time_shift = iround*sg->dur + stime;
-
-		if (debug) _ftprintf(stderr, TEXT(
-			"Run hydraulics at Time %5.2f Hr. \n "),(float)stime/3600);
 
 		if (stime + step >= (istep)*sg->hstep) { 
 			//only set demand data in hstep-interval, (not at control step)
@@ -359,12 +357,17 @@ SG_ERR SG_make(ScadaGenerator *sg, Tstamp* t0_in, int timespan) {
 
 		// run hydraulic simulation
 		problem = ENrunH(&stime);
+
+		if (debug) _ftprintf(stderr, TEXT(
+			"Run hydraulics at Time %5.2f Hr. \n "),(float)stime/3600);
+
 		if (problem >= 100) { // computational errors
 			if (debug) _ftprintf(stderr, 
 				TEXT("Problem (%d): %s \n"), problem, geterrmsg(problem));
 			SG_ewi(err = SG_HYD_PROBLEM);
 			return err;
 		}
+
 
 		/* pull scada data*/
 		if (scada_time_shift <= timespan && sg->ds) {//write db only when within timespan

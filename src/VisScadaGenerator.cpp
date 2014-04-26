@@ -279,7 +279,7 @@ void VSG_vupdate(void* vsg_in, ScadaGenerator* sg) {
 	// add to repository visuals and time stamps
 	vsg->_netStore[(*vsg->_datastep+1)*2] = tubP->GetOutput();
 	vsg->_netStore[(*vsg->_datastep+1)*2+1] = tubD->GetOutput();
-	vsg->_dispStep[*vsg->_datastep+1] = sg->curTstamp;
+	vsg->_dispStep[*vsg->_datastep+1] = sg->elapTime;
 
 	//update complete
 	InterlockedExchangeAdd(vsg->_datastep, 1);

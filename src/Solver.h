@@ -30,10 +30,12 @@ struct Solver
 	/// Error Codes
 	enum EWICode {
 		OK, 
+
 		NETWORK_NOT_EXIST,
 		MALLOC_ERROR,
 		NETWORK_NOT_READY,
 		DS_NOT_EXIST,
+
 		NO_L_TANK,
 		NO_F_PUMP_GPV,
 		NO_B_PUMP_GPV,
@@ -44,11 +46,12 @@ struct Solver
 		DUP_CHANNELS,
 		D_CHANNEL_AT_TANK,
 		FCV_REPLACED_BY_TCV,
+
 		NOT_ENOUGH_XD,
 		TOO_MANY_XD,
         B_EMITTER_CONFLICT,
-
         EQN_ILL_COND,
+
         VALVE_CAUSE_ILL_COND,
         UNABLE_TO_SOLVE,
         MAX_ITER_REACHED,

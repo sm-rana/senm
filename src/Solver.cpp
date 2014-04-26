@@ -225,13 +225,15 @@ Solver::EWICode Solver::createSolver(
 		int iXd = 0;
 		for (int iJunc = 1; iJunc <= net->MaxJuncs; ++ iJunc) {
 			Network::Pdemand	pd = net->Node[iJunc].D;
-			if ( unsigned(tabCAT[iJunc]) & unsigned(Channel::D) ){
-				// has [D] channel
-				prec->_tabIdx2Xd[iJunc] = -1;
-			} else if (pd!=NULL && pd->Base>0 ) {// is a water user
+
+			if (pd!=NULL && pd->Base>0 &&
+                 ((unsigned(tabCAT[iJunc]) & unsigned(Channel::D)) ==0 )  )
+			{// is a water user and no Channel D
 				prec->_tabXd[iXd] = iJunc;
 				prec->_tabIdx2Xd[iJunc] = iXd;
 				++iXd;
+			} else {
+				prec->_tabIdx2Xd[iJunc] = -1; // no xd entry
 			}
 		}			
         // load link availablity
@@ -277,10 +279,12 @@ void Solver::reportEWI(EWICode code, Network::ComponentType ctype, int id1, unsi
 void Solver::reportEWI(EWICode code, Network::ComponentType ctype, int id1, int id2, unsigned thdN){
 	TCHAR texts[LAST_DUMMY_EWI][MAX_ERR_STRING_SIZE] = {
 		TEXT("OK."), 
+
 		TEXT("The Network is invalid. Load inp file to the network first."),
 		TEXT("Can not allocate memory for Solver."), 
 		TEXT("The network contains errors."), 
 		TEXT("The data source does not exist or is not ready."), 
+
 		TEXT("Tank %d does not have a [L] channel for its current water level."), 
 		TEXT("Pump or GPV %d does not have a [F] channel of current flowrate."), 
 		TEXT("Pump or GPV %d does not have a [B] channel showing")
@@ -294,16 +298,18 @@ void Solver::reportEWI(EWICode code, Network::ComponentType ctype, int id1, int 
 		TEXT("A [D] channel is assigned to a tank/reservoir (index %d)."),
 		TEXT("An FCV (index %d) is in the network. will be replaced by a TCV.")
                 TEXT("(i.e., changeable minor headloss)"),
+
 		TEXT("Not enough realizations of stochastic demands provided to the ")
                 TEXT("solver, will use baseline demand instead."),
 		TEXT("Too many demand realizations provided to the solver. only the ")
-                TEXT("first nxd of them will be used.")
+                TEXT("first nxd of them will be used."),
         TEXT("Channel B (index %d) in the node conflicts with an emitter setting."),
-
         TEXT("Hydraulic equation can not be solved due to ill-conditions around node %d."),
+
         TEXT("PRV/PSV causing ill conditionality in the hydraulic equations."),
         TEXT("Hydraulic equations are unable to solve."),
         TEXT("Maximum number of iterations reached. cannot find a solution."),
+
         TEXT("Potential CV/PSV/PRV cyclic problem.")
 	};
 
@@ -345,7 +351,7 @@ void Solver::setLFBVCD() {
 	for (Channel* iCh = _lsChan; iCh; iCh = iCh->next, ++iiCh) {
 		switch (iCh->type) {
 		case Channel::L: //set tank levels (alt.)
-			H[iCh->mindex] = _ss[iiCh];
+			H[iCh->mindex] = _ss[iiCh]/_net->Ucf[Network::HEAD];
 			break;
 		case Channel::F:  
 			// cut the link, 
@@ -354,12 +360,14 @@ void Solver::setLFBVCD() {
 			S[iCh->mindex] = DISABLED; //disable
 			nN1 = _net->Link[iCh->mindex].N1;
 			nN2 = _net->Link[iCh->mindex].N2;
-			D[nN1] += _ss[iiCh];
-			D[nN2] -= _ss[iiCh];
+			D[nN1] += _ss[iiCh]/_net->Ucf[Network::FLOW];
+			D[nN2] -= _ss[iiCh]/_net->Ucf[Network::FLOW];
 			break;
 		case Channel::B:
 			// Store data into B temporarily
-			B[_net->Link[iCh->mindex].N2] = _ss[iiCh];
+			B[_net->Link[iCh->mindex].N2] = 
+				_ss[iiCh]/_net->Ucf[Network::PRESSURE] + 
+				_net->Node[iCh->mindex].El;
 			break;
 		case Channel::V:
 			if (_ss[iiCh] == -1) { //FCV or TCV closed
@@ -380,13 +388,17 @@ void Solver::setLFBVCD() {
 			break;
 		case Channel::D:
 			// add demand
-			D[iCh->mindex] += _ss[iiCh];
+			D[iCh->mindex] += _ss[iiCh]/_net->Ucf[Network::FLOW];
 			break;
 		}
 	}
 }
 
 void Solver::run(double *xd, int nXd) {
+    // reset demands
+	for (int idm = 0; idm < _net->Nnodes+1; ++idm) {
+        D[idm] = 0.0;
+	}
 
 	// set xd using demands 
 	if (nXd < _nXd) { // less water demands provided
@@ -427,7 +439,9 @@ void Solver::run(double *xd, int nXd) {
 
 	/* Initialize emitter flows to 1 fps */
 	for (int i=1; i<=_net->Njuncs; i++)
-		if (_net->Node[i].Ke > 0.0) E[i] = 1.0;
+		if (_net->Node[i].Ke > 0.0 ||  // emitter
+            unsigned(_tabCAT[i]) & unsigned(Channel::B)) // B channel
+			  E[i] = 1.0;
 
 	// run hydraulic simulation, netsolve() in hydraul.c
     int probNode; // link causing ill-conditionality
@@ -454,11 +468,11 @@ void Solver::run(double *xd, int nXd) {
 		}
 
         // update heads and flows
-		for (int i = 1; i<_net->Njuncs; ++i) H[i] = F[_net->Row[i]];
+		for (int i = 1; i<=_net->Njuncs; ++i) H[i] = F[_net->Row[i]];
         newerr = newflows();
 
         // update cv, prv, psv status
-        statChange = valvestatus() && linkstatus(); 
+        //statChange = valvestatus() && linkstatus(); 
 
         ++iter;
         if (iter > MaxIter ) {
@@ -467,7 +481,7 @@ void Solver::run(double *xd, int nXd) {
 				reportEWI(CV_PSV_PRV_PROB);
             break;
 		}
-	} while (newerr < Hacc);
+	} while (newerr > Hacc);
 
    /* Add any emitter flows to junction demands */
    for (int i=1; i<=_net->Njuncs; i++) D[i] += E[i];
@@ -815,7 +829,7 @@ void   Solver::newcoeffs()
 	*/
 {
 	memset(Aii,0,(N+1)*sizeof(double));   /* Reset coeffs. to 0 */
-	memset(Aij,0,(M+1)*sizeof(double));
+	memset(Aij,0,(_net->Ncoeffs+1)*sizeof(double));
 	memset(F,0,(N+1)*sizeof(double));
 	memset(X,0,(N+1)*sizeof(double));
 	memset(P,0,(M+1)*sizeof(double));
@@ -1038,24 +1052,24 @@ void Solver::pumpcoeffB(int k) {
 
 	//and add a reservoir to the discharge side for [B] channels
 	// similar to emitter 
-	double  ke=CSMALL;
-	double  p;
-	double  q;
-	double  y;
-	double  z;
+//	double  ke=CSMALL;
+//	double  p;
+//	double  q;
+//	double  y;
+//	double  z;
 
-    int n2 = _net->Link[k].N2;
-	q = E[n2];  // E gets updated in the previous iteration
-	z = ke*pow(abs(q),_net->Qexp);
-	p = _net->Qexp*z/abs(q);
-	if (p < RQtol) p = 1.0/RQtol;
-	else p = 1.0/p;
-	y = SGN(q)*z*p;
+//    int n2 = _net->Link[k].N2;
+//	q = E[n2];  // E gets updated in the previous iteration
+//	z = ke*pow(abs(q),_net->Qexp);
+//	p = _net->Qexp*z/abs(q);
+//	if (p < RQtol) p = 1.0/RQtol;
+//	else p = 1.0/p;
+//	y = SGN(q)*z*p;
 
-	Aii[_net->Row[n2]] += p;
-    // set the head of the fictitious reservoir to be B channel data;
-	F[_net->Row[n2]] += y + p*B[n2]; 
-	X[n2] -= q;
+//	Aii[_net->Row[n2]] += p;
+//    // set the head of the fictitious reservoir to be B channel data;
+//	F[_net->Row[n2]] += y + p*B[n2]; 
+//	X[n2] -= q;
 
 }
 

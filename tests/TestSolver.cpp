@@ -47,7 +47,7 @@ int main(int argc, char** argv) {
 
 	// create a scada generator and set hook function
 	ScadaGenerator* sg;
-	SG_ERR ecsg = SG_new(A2T(argv[1]), argv[2], 123, md, &sg);
+	SG_ERR ecsg = SG_new(A2T(argv[1]), argv[2], 1234, md, &sg);
 	sg->extObj = (void*)asolver;
 	sg->extUpdate = testSolver;
 
@@ -76,21 +76,24 @@ void testSolver(void* sol_in, ScadaGenerator* sg) {
 	}
 
 	solver->run(XD, solver->_nXd);
+    free(XD);
 
 	// compare modeling result and P, D channels
 	int iichan = 0;
 	for (Channel* ichan=solver->_ds->lsChan; ichan!=NULL; ichan=ichan->next, ++iichan) {
 		if (ichan->type == Channel::P)  {
-			printf("P at Node %d: EPANET %6.2f + %6.2f,  SenM Solver %6.2f \n", ichan->mindex,
-				solver->_ss[iichan], solver->_net->Node[ichan->mindex].El, solver->H[ichan->mindex]);
+			printf("P at Node %d: EPANET %6.2f ,  SenM Solver %6.2f \n", ichan->mindex,
+				solver->_ss[iichan]/solver->_net->Ucf[Network::PRESSURE]+ 
+				solver->_net->Node[ichan->mindex].El, solver->H[ichan->mindex]);
 		}
 		if (ichan->type == Channel::Q) {
 			printf("Q at Node %d: EPANET %6.2f, SenM Solver %6.2f \n", ichan->mindex,
-				solver->_ss[iichan], solver->Q[ichan->mindex]);
+				solver->_ss[iichan]/solver->_net->Ucf[Network::FLOW], 
+				solver->Q[ichan->mindex]);
 		}
 	}
 
-	Sleep(5000);
+	//Sleep(5000);
 }
 
 
