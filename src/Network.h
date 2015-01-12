@@ -22,7 +22,7 @@ for more details.   */
 #define MAX_NET_CTYPE_STR_SIZE 64
 
 /// EPANET network infrastructure
-/**Singleton data container of distribution network infrastructure based on an EPANET inp file. 
+/**Data container of distribution network infrastructure based on an EPANET inp file. 
 Data managed by the Network class including:
 
 [for hydraulic solver]
@@ -142,12 +142,14 @@ struct Network {
 	///> report network information to stdout
 	static void report();
 
-	// Publiclly accessible types and constants
+	// Publicly accessible types and constants
 	/** Variable types*/
 	/** EPANET has its own typing system for the attributes of components. 
-	This enum is also used by Channel definition (\sa datasource.h),  Network class
-	the database schema (see .sql files), and graphic objects (\sa sensor.h)
-	to specify the type of the physical varaible of a Scada system sensor */
+	This enum is also used by Channel definition ,  Network class
+	the database schema (see .sql files), and graphic objects 
+	to specify the type of the physical varaible of a Scada system sensor 
+	\sa datasource.h \sa sensor.h
+	*/
 	enum FieldType { 
 
 		//-----NODE VARIABLES -----//
@@ -336,7 +338,7 @@ struct Network {
         return 0; //not found
 	}
 
-	/// Get the maxiumu baseline demand
+	/// Get the maximum baseline demand
 	double getMaxBaselineDemand() {
 		_maxBD = -DBL_MAX;
 		for (int i=1;i<MaxNodes;++i)
@@ -504,11 +506,11 @@ struct Network {
 
 	/// Make Solver class a friend class, so all private members are accessible there
 	/// \sa Solver
-	friend class Solver;
+	//friend class Solver;
 
 	/// Make VisNetwork class a friend class, 
 	/// \sa VisNetwork
-	friend class VisNetwork;
+	//friend class VisNetwork;
 
 	// Options/configurations
 	UnitsType Unitsflag;

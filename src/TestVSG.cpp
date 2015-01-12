@@ -1,8 +1,11 @@
-// Use Vtk to visualize network demands and hydraulics
+// Test Scada Generator 
+// If vis = 1, Use Vtk to visualize network demands and hydraulics
 #include <process.h>
 #include <Windows.h>
+#include "ScadaGenerator.h"
 #include "VisScadaGenerator.h"
 
+int vis = 0;
 
 // get example varima model
 Varima* makeTestVarima(int, float*);
@@ -26,20 +29,33 @@ USES_CONVERSION;
 	// create a varima model
 	Varima* varima_weekly = makeTestVarima(net->getNusers(), net->getRefD());
 
-    // create Visualizer of scada generator
-    VSG_ERR vsgerr;
-    VisScadaGenerator* vsg;
-	vsgerr = VSG_new(A2T(argv[1]), argv[2], 1234, varima_weekly, timespan, &vsg);
-	//vsgerr = VSG_new(A2T(argv[1]), argv[2], 1234, , &vsg);
-    if (vsgerr!=VSG_OK) { VSG_ewi(vsgerr); return 2;}
+	if (vis == 1) {
+		// create Visualizer of scada generator
+		VSG_ERR vsgerr;
+		VisScadaGenerator* vsg;
+		vsgerr = VSG_new(A2T(argv[1]), argv[2], 1234, varima_weekly, timespan, &vsg);
+		//vsgerr = VSG_new(A2T(argv[1]), argv[2], 1234, , &vsg);
+		if (vsgerr!=VSG_OK) { VSG_ewi(vsgerr); return 2;}
 
-    // run simulation and visualization
-    VSG_run(vsg, &t0);
+		// run simulation and visualization
+		VSG_run(vsg, &t0);
 
-    // clean up
-    VSG_delete(vsg);
-    delete net;
+		// clean up
+		VSG_delete(vsg);
+	} else { // no visualization
+		SG_ERR sg_err;
+		ScadaGenerator* sg;
+		sg_err = SG_new(A2T(argv[1]), argv[2], 1234, varima_weekly, &sg);  
+		if (sg_err != SG_OK) {
+			SG_ewi(sg_err); return 3;
+		}
+		SG_make(sg, &t0, timespan);
 
+		SG_delete(sg);
+	}
+
+	//TODO: network destructor
+    //delete net;
 	return 0;
 
 }

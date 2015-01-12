@@ -51,25 +51,39 @@ DataSource::Err DataSource::New(const char * ininame, Network* net, DataSource**
 	}; //else (*ds)->n_prov = nprov;
 
 	for (int iprov=1; iprov<=nprov; ++iprov) {
+		char tmp[MAX_DSN_LEN];
+		char *dsn, *server, *port, *uid, *pwd ;
+		char *vendor, *schema;
+
+		sprintf(tmp, "Source%d:vendor", iprov);
+		vendor = iniparser_getstring(dict, tmp, "");
+
+		sprintf(tmp, "Source%d:dsn", iprov);
+		dsn = iniparser_getstring(dict, tmp, "");
+
+		sprintf(tmp, "Source%d:server", iprov);
+		server = iniparser_getstring(dict, tmp, "");
+
+		sprintf(tmp, "Source%d:port", iprov);
+		port = iniparser_getstring(dict, tmp, "");
+
+		sprintf(tmp, "Source%d:uid", iprov);
+		uid = iniparser_getstring(dict, tmp, "");
+
+		sprintf(tmp, "Source%d:pwd", iprov);
+		pwd = iniparser_getstring(dict, tmp, "");
+
 		char src[MAX_DSN_LEN];
-		char* dsn, *server, *port, *uid, *pwd;
-		sprintf(src, "Source%d:dsn", iprov);
-		dsn = iniparser_getstring(dict, src, "");
-
-		sprintf(src, "Source%d:server", iprov);
-		server = iniparser_getstring(dict, src, "");
-
-		sprintf(src, "Source%d:port", iprov);
-		port = iniparser_getstring(dict, src, "");
-
-		sprintf(src, "Source%d:uid", iprov);
-		uid = iniparser_getstring(dict, src, "");
-
-		sprintf(src, "Source%d:pwd", iprov);
-		pwd = iniparser_getstring(dict, src, "");
-
 		sprintf(src, "DSN=%s; SERVER=%s; PORT=%s; UID=%s; PWD=%s", 
 			dsn, server, port, uid, pwd);
+
+		if (strcmp(vendor, "postgres") == 0) {
+			sprintf(tmp, "Source%d:schema", iprov);
+			schema = iniparser_getstring(dict, tmp, "");
+			strcat(src, "; A6=set search_path to ");
+			strcat(src, schema);
+			strcat(src, ",public;");
+		}
 
 		TCHAR tdsn[MAX_DSN_LEN];
 		_tcscpy(tdsn, A2T(src));
@@ -293,8 +307,8 @@ Provider::Provider()
 	lsChan = NULL;
 	nChan = 0;
 	next = NULL;
-	_tcscpy(dat_tab, TEXT("Msmts"));  // fact table
-	_tcscpy(chan_tab, TEXT("Channels"));  // data table
+	_tcscpy(dat_tab, TEXT("msmts"));  // fact table
+	_tcscpy(chan_tab, TEXT("channels"));  // data table
 
 }
 
@@ -430,7 +444,8 @@ Provider::Err Provider::initInsertScada(Tstamp* scada_t0){
     Err err;
 
 	if (debug) _stprintf(sqltext, TEXT(
-		"INSERT INTO %s (time, value, cid) VALUES(DATE_ADD(?, INTERVAL ? SECOND), ?, ?);"), 
+		"INSERT INTO %s (time, value, cid) VALUES( ?::timestamp + ((? || ' SECONDS')::interval), ?, ?);"),  //postgres
+		//"		VALUES(DATE_ADD(?, INTERVAL ? SECOND), ?, ?);"), //mysql
 		dat_tab);
 
 	rc = SQLPrepare(hStmt_w, sqltext, SQL_NTS);
@@ -496,24 +511,38 @@ Provider::Err Provider::getDataAt(SQL_TIMESTAMP_STRUCT timestamp,
 								  int* time_offset /*timestamp of the data returned */ 
 								  ) 
 {
-	if ((hEnv == NULL) || (hDbc = NULL) || (hStmt == NULL) )
+	if ((hEnv == NULL) || (hDbc == NULL) || (hStmt == NULL) )
 		return DB_CONN_NOT_READY;
 
 	SQLTCHAR sqltext[MAX_SQL_LEN];
+	SQLTCHAR postgres_time_diff_sql[MAX_SQL_LEN];
+	SQLTCHAR mysql_time_diff_sql[MAX_SQL_LEN];
+
+	SQLTCHAR *postgres_time_add_sql = TEXT(
+		"(?::timestamp + ((? || ' SECONDS')::interval))");  
+	SQLTCHAR *mysql_time_add_sql = TEXT(
+		"(DATE_ADD(?, INTERVAL ? SECOND))");  
+
+	_stprintf(postgres_time_diff_sql, TEXT(
+		"extract(epoch from (time - %s))"), postgres_time_add_sql);
+	_stprintf(mysql_time_diff_sql, TEXT(
+		"TIME_TO_SEC(TIMEDIFF(time, %s)"), mysql_time_add_sql);  
+
+
 	_stprintf(sqltext, TEXT(
-		"SELECT\
-		TIME_TO_SEC(TIMEDIFF(time, DATE_ADD(?, INTERVAL ? SECOND))), \
-		value \
-		FROM\
-		%s \
+		"SELECT %s, value \
+		FROM %s \
 		WHERE \
-		cid = ? \
-		AND \
-		time <= DATE_ADD(?, INTERVAL ? SECOND)\
+			cid = ? \
+				AND \
+			time <= %s \
 		ORDER BY \
-		ABS(TIME_TO_SEC(TIMEDIFF(\
-		time, DATE_ADD(?, INTERVAL ? SECOND)))) \
-		ASC LIMIT 1;"), dat_tab);
+			ABS(%s) \
+			ASC LIMIT 1;"), 
+			postgres_time_diff_sql, 
+			dat_tab,
+			postgres_time_add_sql,
+			postgres_time_diff_sql );
 
 	SQLRETURN rc;
 	if (!hStmt_dat_prepared) {

@@ -272,9 +272,9 @@ Network::~Network()
 	}
 
 	// delete quick indexing arrays
-	delete tPumpGPV;
-	delete tCRSV;
-	delete tTFV;
+	free(tPumpGPV);
+	free(tCRSV);
+	free(tTFV);
 }
 
 Network::ErrorCode Network::loadInp(FILE* InFile) {
@@ -509,9 +509,21 @@ Network::ErrorCode Network::loadInp(FILE* InFile) {
 		}
 
 		// build quick indexing arrays 
-		if (nPumpGPV) tPumpGPV = new int(nPumpGPV);
-		if (nCRSV) tCRSV = new int(nCRSV);
-		if (nTFV) tTFV = new int(nTFV);
+		if (nPumpGPV) 
+			tPumpGPV = (int*)calloc(nPumpGPV, sizeof(int));
+		else
+			tPumpGPV = NULL;
+
+		if (nCRSV) 
+			tCRSV = (int*)calloc(nCRSV, sizeof(int));
+		else
+			tCRSV = NULL;
+
+		if (nTFV) 
+			tTFV = (int*)calloc(nTFV, sizeof(int));
+		else
+			tTFV = NULL;
+
 		int iPG = 0; 
 		int iCRSV = 0;
 		int iTFV = 0;

@@ -6,7 +6,7 @@
 #include <time.h>
 
 /* disable c runtime warnings for "unsafe" strings*/
-#define _CRT_SECURE_NO_WARNINGS
+//#define _CRT_SECURE_NO_WARNINGS
 
 // Number of "worker" threads, usually equal to the number of cpu cores minus 1.
 #define N_WORKERS 3
@@ -34,7 +34,9 @@
 
 // 
 #define SQR(x) ((x)*(x))
-#define SGN(x) ((x)>0 ? 1 : ( (x)==0? 0 :-1))
+#ifndef SGN
+	#define SGN(x) ((x)>0 ? 1 : ( (x)==0? 0 :-1))
+#endif
 
 /// max size of error txt string
 #define MAX_ERR_STRING_SIZE 1024

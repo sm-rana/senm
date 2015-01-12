@@ -143,6 +143,8 @@ void SG_ewi(SG_ERR err);
 /// Run hydraulic simulation and write to database  
 SG_ERR SG_make(ScadaGenerator *sg, Tstamp* t0, int timespan);
 
+//TODO: reset the database using a sql file for db creation
+
 /// struct for makeT arguments
 struct SG_MakeTArg {
 	ScadaGenerator* sg;

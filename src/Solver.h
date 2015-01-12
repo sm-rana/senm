@@ -21,8 +21,8 @@ the class maintains its own set of intermediate variables and result variables
 so that a network with multiple demand (loading) scenarios can be solved in many
 threads at the same time.
 */
-/* Instances of the Solver class is able to read private members of the singleton 
-Network (friend class), however, to ensure other Solver's hydraulic simulation is not 
+/* Instances of the Solver class is able to read the Network instance, 
+however, to ensure other Solver's hydraulic simulation is not 
 interfered, don't change the Network's internal data*/
 struct Solver
 {

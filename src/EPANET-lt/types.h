@@ -104,7 +104,9 @@ typedef  int          INT4;                                                    /
                                               /* round-off of x        */
 #define MOD(x,y) ((x)%(y))                    /* x modulus y           */
 #define SQR(x)   ((x)*(x))                    /* x-squared             */
-#define SGN(x)   (((x)<0) ? (-1) : (1))       /* sign of x             */
+#ifndef SGN
+	#define SGN(x)   (((x)<0) ? (-1) : (1))       /* sign of x             */
+#endif
 #define UCHAR(x) (((x) >= 'a' && (x) <= 'z') ? ((x)&~32) : (x))
                                               /* uppercase char of x   */
 /*

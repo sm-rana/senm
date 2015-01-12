@@ -31,7 +31,7 @@ struct DataSource;
 
 /// Data source manager
 /** The instance of DataSource class manages a list of data channels and provides 
-data services. must be created with newDataSource()
+data services. must be created with DataSource::New()
 */
 struct DataSource {
 	/** Status of data source*/
@@ -133,6 +133,7 @@ The db query funtions are implemented based on ODBC.
 A provider may have one or multiple channels */
 struct Provider
 {
+	// TODO: support multiple database implementations
 	SQLHENV     hEnv;   ///> environment handle
 	SQLHDBC     hDbc;	///> connection handle
 	SQLHSTMT    hStmt;	///> general statement handle
@@ -180,7 +181,7 @@ struct Provider
 	static Err New(TCHAR* tdsn, Provider** prov_out, Network* net = NULL);
 
 	/**  Connect a database */
-	/** There must be two data tables exsited in the db.
+	/** There must be two data tables existing in the db.
 	- Msmts  Measurement data (fact table)
 	- Channels   Channel information used to construct the list of channels
 	*/
@@ -188,8 +189,7 @@ struct Provider
 	*/
 	Err connect(LPCTSTR tdsn);  
 
-	/** Diagnose check data tables */
-	/** Not implemented yet*/
+	// TODO: Diagnostic checking of data tables */
 	//Err check(LPCTSTR dat_table_name,
 	//		 LPCTSTR meta_table_name); 
 
@@ -268,7 +268,7 @@ struct Channel
 		Q = 0x20, ///> Pipe flow rate 
 		C = 0x40, ///> Pipe/valve on/off
 		P = 0x80, ///> Nodal pressure
-		D = 0x100, ///> Real-time demad (flow meter)
+		D = 0x100, ///> Real-time demand (flow meter)
 
 	};
 

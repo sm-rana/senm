@@ -359,7 +359,8 @@ SG_ERR SG_make(ScadaGenerator *sg, Tstamp* t0_in, int timespan) {
 		problem = ENrunH(&stime);
 
 		if (debug) _ftprintf(stderr, TEXT(
-			"Run hydraulics at Time %5.2f Hr. \n "),(float)stime/3600);
+			"Hyd-sim @ %5.2f Hr (+ %d * %d s) \n "),
+			(float)stime/3600, iround, sg->dur);
 
 		if (problem >= 100) { // computational errors
 			if (debug) _ftprintf(stderr, 
