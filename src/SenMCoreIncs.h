@@ -9,7 +9,7 @@
 //#define _CRT_SECURE_NO_WARNINGS
 
 // Number of "worker" threads, usually equal to the number of cpu cores minus 1.
-#define N_WORKERS 3
+#define N_WORKERS 1
 
 // numerical constants
 #define _PI  3.1415926
@@ -32,6 +32,10 @@
 #define AC  -5.14214965799e-03 /* AA*AB */
 
 
+#define MAX_NET_ID_LEN  256 ///> Network node/link identification string
+#define MAX_COMP_TYPE_STR_SIZE 64
+
+
 // 
 #define SQR(x) ((x)*(x))
 #ifndef SGN
@@ -40,6 +44,10 @@
 
 /// max size of error txt string
 #define MAX_ERR_STRING_SIZE 1024
+
+/// max size of error txt string
+#define MAX_FILE_NAME_SIZE 1024
+
 
 /// max size of error txt prefix
 #define MAX_ERR_PREFIX_SIZE 128

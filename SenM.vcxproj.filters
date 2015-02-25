@@ -24,40 +24,25 @@
     <ClCompile Include="src\Population.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\ScadaGenerator.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\SenM.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\Sensor.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="src\Solver.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\testDataSource.cpp">
+    <ClCompile Include="src\VarModel.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\testSenM.cpp">
+    <ClCompile Include="src\senm.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\testSG.cpp">
+    <ClCompile Include="src\iniParser_3.1\dictionary.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\testVarima.cpp">
+    <ClCompile Include="src\iniParser_3.1\iniparser.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\testVisi.cpp">
+    <ClCompile Include="src\ewi.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\Varima.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\Viewer.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\VisNetwork.cpp">
+    <ClCompile Include="src\rngs\rvgs.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -74,31 +59,28 @@
     <ClInclude Include="src\Population.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\ScadaGenerator.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\SenM.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="src\SenMCoreIncs.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\SenmVtkIncs.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Sensor.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\Solver.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\Varima.h">
+    <ClInclude Include="src\VarModel.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\Viewer.h">
+    <ClInclude Include="src\clapack_3.2.1\clapack.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\VisNetwork.h">
+    <ClInclude Include="src\Channel.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\iniParser_3.1\dictionary.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\rngs\rvgs.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\SFMT_1.4\SFMT.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

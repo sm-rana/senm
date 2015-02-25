@@ -1,5 +1,5 @@
 #include <stdio.h>
-#include <SenmCoreIncs.h>
+#include "SenmCoreIncs.h"
 /// Error reporting facilities
 
 /// global log file

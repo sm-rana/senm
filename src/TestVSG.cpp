@@ -17,7 +17,7 @@ USES_CONVERSION;
 
     //start time and time span
 	Tstamp t0 = { 2013, 4, 22,  0, 0, 0, 0 };
-	int timespan = 3600*24*7;
+	int timespan = 3600*24*30;
 
     //read inp file (1st time for nusers)
 	Network::ErrorCode ec;

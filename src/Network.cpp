@@ -155,7 +155,6 @@ LPCTSTR Network::problemText(WarnCode wc) {
 }
 
 
-
 Network::ErrorCode Network::getNetwork(LPCTSTR inpfilename, Network **net) {
 
 	// if no file name provided, return current singleton
@@ -204,6 +203,7 @@ Network::ErrorCode Network::getNetwork(LPCTSTR inpfilename, Network **net) {
 		singleton->_lineEc);
 
 	if (singleton->_ecCur != OK) {
+		// TODO: network clean-up problem
 		delete(singleton);
 		*net = NULL;
 		return singleton->_ecCur;
@@ -402,7 +402,7 @@ Network::ErrorCode Network::loadInp(FILE* InFile) {
 	///////////////////
 
 	char wline[MAX_LINE+1];  /* Working copy of input line      */
-	int inperr; 
+	//int inperr; 
 
 	/* Read each line from input file. */
 	while (fgets(line,MAX_LINE,InFile) != NULL)    {
@@ -504,7 +504,7 @@ Network::ErrorCode Network::loadInp(FILE* InFile) {
         int iuser=0;
 		for (int ii = 1; ii<=MaxJuncs; ++ii) {
 			if (Node[ii].D && Node[ii].D->Base >0) {
-                ref_demand[iuser++] = Node[ii].D->Base;
+                ref_demand[iuser++] = (float)(Node[ii].D->Base);
 			}
 		}
 
@@ -1267,7 +1267,7 @@ double  Network::interp(int n, double x[], double y[], double xx)
 void Network::adjustdata()
 {
 	int   i;
-	double ucf;                   /* Unit conversion factor */
+	//double ucf;                   /* Unit conversion factor */
 	Pdemand demand;              /* Pointer to demand record */
 
 	/* Determine unit system based on flow units */
@@ -1775,8 +1775,8 @@ Network::ErrorCode  Network::emitterdata()
 	**--------------------------------------------------------------
 	*/
 {
-	int   j,                  /* Node index    */
-		n;                  /* # data items  */
+	//int   j,                  /* Node index    */
+	int	n;                  /* # data items  */
 	double k;                  /* Flow coeff,   */
 
 	n = Ntokens;
@@ -2154,7 +2154,7 @@ Network::ErrorCode  Network::valvedata()
 	double diam = 0.0,            /* Valve diameter     */
 		setting = 0,               /* Valve setting      */
 		lcoeff = 0.0;          /* Minor loss coeff.  */
-	STmplist *t;                 /* Curve record       */
+	//STmplist *t;                 /* Curve record       */
 
 	/* Add new valve to data base */
 	n = Ntokens;
@@ -2961,15 +2961,15 @@ void Network::report() {
 }
 
 void Network::reportWarns() {
-	TCHAR warnTxt[1024];
+	//TCHAR warnTxt[1024];
 	std::list<Warn>::iterator iWarn;
 
-	_tprintf(TEXT("Network Warnings: "));
+	//_tprintf(TEXT("Network Warnings: "));
 	for (iWarn=_lsWC.begin(); iWarn!=_lsWC.end(); ++iWarn) {
 
 		_tprintf(TEXT("Line %d: %s \n"), iWarn->first, problemText(iWarn->second));
 	}
-    _tprintf(TEXT("\n"));
+    _tprintf(TEXT("\n\n"));
 	return;
 }
 //		"Network Info:\n\tTotal Nodes: %d, Tanks+Reservoirs: %d, Junctions: %d\n\tTotal Links: %d, Pipes: %d, Pumps: %d, Valves: %d\n"),

@@ -32,7 +32,8 @@ struct Arg {
 
 unsigned WINAPI workVarimaGeneration(void* arg) {
 	Arg* parg =  (Arg*) arg; //worker/chain id
-	double* z = new double[parg->dim1];
+	//double* z = new double[parg->dim1];
+	double* z = (double*)calloc(parg->dim1, sizeof(double));
 
 	parg->var->threadN = parg->iw;
 	unsigned im, id;
@@ -46,7 +47,8 @@ unsigned WINAPI workVarimaGeneration(void* arg) {
         Sleep(30);
 	}
 
-    delete[] z;
+	free(z);
+    //delete[] z;
     return 0;
 }
 
@@ -57,12 +59,15 @@ int main() {
 
 	ewi(TEXT("Test 1: non-seasonal arima\n"));
 
-	double phi_in[] = {1.28, -0.4, 
-		0.7, 0,
-		1, -0.5};
-	double cov[] = { 1, 0.3,  -0.2, 
-		0.3,  1,  0.5,
-		-0.2,  0.5, 1};
+	double phi_in[] = {
+		1.28,	-0.4	, 
+		0.7	,	0		,
+		1	,	-0.5	};
+	double cov[] = { 
+		1,	0.3,	-0.2, 
+		0.3,  1,	0.5,
+		-0.2, 0.5,	1};
+
 	Population* pop1;
 	if (Pop_new(TEST_VARIMA_M, 3, &pop1)!=POP_OK) {return 1;}
 
@@ -97,6 +102,10 @@ int main() {
 	} while (reason == WAIT_TIMEOUT);
 
     Pop_del(&pop1);
+
+	//TODO: double-dimensional (d2 > 1) test 
+
+
     return 0;
 
 }

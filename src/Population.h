@@ -17,10 +17,16 @@ for more details.   */
 #include "stdio.h"
 #include "SenmCoreIncs.h"
 
+//#define POPH2(pop, iw, im, row, col)   (pop->h[iw][((row)*pop->d1+(col))*pop->M + (im)])
+//#define POPH(pop, iw, im, id)   (pop->h[iw][(id)*pop->M + (im)])
+//#define POPOS(pop, iw, im, id)   (pop->_os[iw][(id)*pop->M + (im)])
+
+
 /// two macros for easier matrix/vector indexing
-#define POPH2(pop, iw, im, row, col)   (pop->h[iw][((row)*pop->d1+(col))*pop->M + (im)])
-#define POPH(pop, iw, im, id)   (pop->h[iw][(id)*pop->M + (im)])
-#define POPOS(pop, iw, im, id)   (pop->_os[iw][(id)*pop->M + (im)])
+#define POPH2(pop, iw, im, row, col)   (pop->h[iw][((col)*pop->d1+(row)) + (im)*pop->d1*pop->d2])
+#define POPH(pop, iw, im, id)   (pop->h[iw][(id) + (im)*pop->d1*pop->d2])
+#define POPOS(pop, iw, im, id)   (pop->_os[iw][(id) + (im)*pop->d1*pop->d2])
+
 
 // default max-lag of autocovariance computation (hours in a month)
 //#define POP_MAX_ACF (24*7*4)  
@@ -39,35 +45,36 @@ for more details.   */
 /// Data storage and statistic reporting of vector/matrix chains 
 struct Population {
 
-	unsigned M;  ///> max length of the chain;
-	unsigned d1;  ///> size of 1st dimension
-	unsigned d2;  ///> size of 2nd dimension, =1 if vector chain
+	int M;  ///> max length of the chain;
+	int d1;  ///> size of 1st dimension
+	int d2;  ///> size of 2nd dimension, =1 if vector chain
 
 	double * h[N_WORKERS]; ///> head of vector/matrix chains, each with Dim d1*d2*M
-	unsigned p[N_WORKERS]; ///> chain pointer, how many elements in h has been produced
+	int p[N_WORKERS]; ///> chain pointer, how many elements in h has been produced
 
     /// report pointer, corresponds to the stats below in each chain
-	unsigned _ps[N_WORKERS]; 
+	int _ps[N_WORKERS]; 
 
     /// statistics access lock, reading following stats must acquire the shared lock first
 	SRWLOCK statLoc;
 
 	// statistics
 	double* mean[N_WORKERS]; ///> chain means, dim = d1*d2
-	double* tmean; ///> total means
+	double* tmean; ///> total means (of all chains)
 	double* sdev[N_WORKERS];  ///> chain std deviation, dim = d1*d2
-	double* tsdev; ///> total std deviation
+	double* tsdev; ///> total std deviation (of all chains)
 
-    /// autocovariances for vector time series, only for 1d data (d2==1)
+    /// autocovariances for vector time series, only available 
+	/// for 1d data (d2==1)
 	double* acor[N_WORKERS][POP_MAX_ACF]; 
 
-    /// order statistics - ranks in single chain
-    /** _os[iw][id*M + j] is the index(im) of the jth smallest elements in h[] in
+    /// order statistics - ranks in a single chain (1d only)
+    /** _os[iw][id*M + j] is the index(im) of the jth smallest value in h[] for
      the id-th element in the iw-th chain */
-	unsigned *_os[N_WORKERS];  
+	int *_os[N_WORKERS];  
 
     /// order statistics - ranks in all chains
-    unsigned *_tos;
+    int *_tos;
 
 	double* clU1[N_WORKERS];  ///> credible limit upper: 1st. each chain (i.e., 97.5% percentile)
 	double* clL1[N_WORKERS];  ///> credible limit lower: 1st
@@ -92,14 +99,14 @@ enum Pop_Err {
 
 /// create Population - Factory method
 /** M_in, d1_in, d2_in must >0 */
-Pop_Err Pop_new(unsigned M_in, unsigned d1_in, unsigned d2_in, Population** pop_out);
+Pop_Err Pop_new(int M_in, int d1_in, int d2_in, Population** pop_out);
 
 
 /// create Population - Factory method, 
 /** if shadow = 1, create a shadow instance (no h[], os[], tos data storage, 
    only stats storage, used by Pop_calc() */
-Pop_Err Pop_new(unsigned M_in, unsigned d1_in, unsigned d2_in, Population** pop_out, int shadow);
-Pop_Err Pop_new(unsigned M_in, unsigned d1_in, Population** pop_out) ;
+Pop_Err Pop_new(int M_in, int d1_in, int d2_in, Population** pop_out, int shadow);
+Pop_Err Pop_new(int M_in, int d1_in, Population** pop_out) ;
 
 void Pop_del(Population** pop);
 

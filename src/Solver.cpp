@@ -70,7 +70,7 @@ Solver::EWICode Solver::createSolver(
 			reportEWI(NO_CHANNELS); 
 		}
 
-		// load channel availability table
+		// load channel availability table (CAT)
 		int N = net->MaxNodes;
 		int M = net->MaxLinks;
 
@@ -132,12 +132,10 @@ Solver::EWICode Solver::createSolver(
 			case Channel::D: //node
 				++ nCd;  // go through
 			case Channel::L: case Channel::P: case Channel::B: case Channel::A:
-				tabCAT[idx] = Channel::Type(
-					unsigned(tabCAT[idx]) | unsigned(iChan->type));
+				tabCAT[idx] |= iChan->type;
 				break;
 			default: //link
-				tabCAT[idx+N] = Channel::Type(
-					unsigned(tabCAT[idx+N]) | unsigned(iChan->type));
+				tabCAT[idx+N] |= iChan->type;
 			}
 		}
 
@@ -145,11 +143,12 @@ Solver::EWICode Solver::createSolver(
 		// 1. Tank/Reservoir must have [L] channel,
 		for (int iTank = 1; iTank <= net->MaxTanks; ++ iTank) {
 			int tpNode = net->Tank[iTank].Node;
-			if (unsigned(tabCAT[tpNode]) & unsigned(Channel::D) ) {
+			if (tabCAT[tpNode] & Channel::D ) { 
+				//water demand at tanks/reservoirs - ignore
 				reportEWI(D_CHANNEL_AT_TANK, Network::TANK, tpNode, thdN);
 				--nCd;
 			}
-			if ((unsigned(tabCAT[tpNode]) & unsigned(Channel::L)) == 0) {
+			if ( (tabCAT[tpNode] & Channel::L) == 0) {
                 reportEWI(err = NO_L_TANK, Network::TANK, tpNode, thdN);
                 goto END;
 			}
@@ -159,11 +158,11 @@ Solver::EWICode Solver::createSolver(
 		for (int iPG = 0; iPG< net->nPumpGPV; ++iPG) {
 			int tpLink = net->tPumpGPV[iPG];
             int tpN2 = net->Link[tpLink].N2;
-			if ( (unsigned(tabCAT[N+tpLink]) & unsigned(Channel::F)) ==0 ) {
+			if ( (tabCAT[N+tpLink] & Channel::F) ==0 ) {
                 reportEWI(err = NO_F_PUMP_GPV, Network::PUMP, tpLink, thdN);
                 goto END;
 			}
-			if ( (unsigned(tabCAT[tpN2]) & unsigned(Channel::B)) ==0 ) {
+			if ( (tabCAT[tpN2] & Channel::B) ==0 ) {
                 reportEWI(err = NO_B_PUMP_GPV, Network::PUMP, tpLink, thdN);
                 goto END;
 			}
@@ -172,10 +171,10 @@ Solver::EWICode Solver::createSolver(
 			}
 
 		}
-		// 3. TCV/TFV must have [V] Channel
+		// 3. TCV/FCV must have [V] Channel
 		for (int iTFV = 0; iTFV<net->nTFV; ++iTFV) {
 			int tpLink = net->tTFV[iTFV];
-			if ( (unsigned(tabCAT[N+tpLink]) & unsigned(Channel::V)) ==0 ) {
+			if ( (tabCAT[N+tpLink] & Channel::V) ==0 ) {
                 reportEWI(err = NO_V_TCV_FCV, Network::TCV, tpLink, thdN); goto END;
 			}
 		}
@@ -190,7 +189,7 @@ Solver::EWICode Solver::createSolver(
 		prec->_tabCAT = tabCAT;
 		prec->_nChan = nChan;
 		prec->_lsChan = lsChan;
-		prec->_nXd = net->MaxJuncs - nCd;
+		prec->_nXd = net->Nusers - nCd;
 
 
 		int n = prec->N + 1;
@@ -226,9 +225,8 @@ Solver::EWICode Solver::createSolver(
 		for (int iJunc = 1; iJunc <= net->MaxJuncs; ++ iJunc) {
 			Network::Pdemand	pd = net->Node[iJunc].D;
 
-			if (pd!=NULL && pd->Base>0 &&
-                 ((unsigned(tabCAT[iJunc]) & unsigned(Channel::D)) ==0 )  )
-			{// is a water user and no Channel D
+			if (pd!=NULL && pd->Base>0 && ((tabCAT[iJunc] & Channel::D) ==0 )) {
+				// is a water user and no Channel D
 				prec->_tabXd[iXd] = iJunc;
 				prec->_tabIdx2Xd[iJunc] = iXd;
 				++iXd;
@@ -248,7 +246,7 @@ Solver::EWICode Solver::createSolver(
 
 
 		// get pointer to snapshot data
-		prec->_ss = ds->_datBuf;
+		//prec->_ss = ds->_datBuf;
 
 		/* Set exponent in head loss equation and adjust flow-resistance tolerance.*/
 		if (net->Formflag == Network::HW) prec->Hexp = 1.852;
@@ -345,13 +343,14 @@ void Solver::reportEWI(EWICode code, Network::ComponentType ctype, int id1, int 
 //	return OK;
 //}
 
-void Solver::setLFBVCD() {
+Solver::EWICode Solver::setLFBVCD(double* chd, int n_ch) {
+	if (n_ch != this->_nChan) return CHAN_DATA_NOT_MATCH;
 	int iiCh = 0;
     int nN1 = 0;  int nN2 = 0;
 	for (Channel* iCh = _lsChan; iCh; iCh = iCh->next, ++iiCh) {
 		switch (iCh->type) {
 		case Channel::L: //set tank levels (alt.)
-			H[iCh->mindex] = _ss[iiCh]/_net->Ucf[Network::HEAD];
+			H[iCh->mindex] = chd[iiCh]/_net->Ucf[Network::HEAD];
 			break;
 		case Channel::F:  
 			// cut the link, 
@@ -360,27 +359,27 @@ void Solver::setLFBVCD() {
 			S[iCh->mindex] = DISABLED; //disable
 			nN1 = _net->Link[iCh->mindex].N1;
 			nN2 = _net->Link[iCh->mindex].N2;
-			D[nN1] += _ss[iiCh]/_net->Ucf[Network::FLOW];
-			D[nN2] -= _ss[iiCh]/_net->Ucf[Network::FLOW];
+			D[nN1] += chd[iiCh]/_net->Ucf[Network::FLOW];
+			D[nN2] -= chd[iiCh]/_net->Ucf[Network::FLOW];
 			break;
 		case Channel::B:
 			// Store data into B temporarily
 			B[_net->Link[iCh->mindex].N2] = 
-				_ss[iiCh]/_net->Ucf[Network::PRESSURE] + 
+				chd[iiCh]/_net->Ucf[Network::PRESSURE] + 
 				_net->Node[iCh->mindex].El;
 			break;
 		case Channel::V:
-			if (_ss[iiCh] == -1) { //FCV or TCV closed
+			if (chd[iiCh] == -1) { //FCV or TCV closed
 				S[iCh->mindex] = DISABLED;
 				K[iCh->mindex] = CBIG;
 			} else { //open, set minor head loss coeff
 				S[iCh->mindex] = PARTIAL;
-				K[iCh->mindex] = _ss[iiCh];
+				K[iCh->mindex] = chd[iiCh];
 			}
 			break;
 		case Channel::C:
 			//set link status
-			if (_ss[iiCh] == 1) { // open
+			if (chd[iiCh] == 1) { // open
 				S[iCh->mindex] = DISABLED;
 			} else {
 				S[iCh->mindex] = FULL_OPEN;
@@ -388,13 +387,14 @@ void Solver::setLFBVCD() {
 			break;
 		case Channel::D:
 			// add demand
-			D[iCh->mindex] += _ss[iiCh]/_net->Ucf[Network::FLOW];
+			D[iCh->mindex] += chd[iiCh]/_net->Ucf[Network::FLOW];
 			break;
 		}
 	}
+	return OK;
 }
 
-void Solver::run(double *xd, int nXd) {
+void Solver::run(double *xd, int nXd, double* chd, int n_chd) {
     // reset demands
 	for (int idm = 0; idm < _net->Nnodes+1; ++idm) {
         D[idm] = 0.0;
@@ -435,7 +435,7 @@ void Solver::run(double *xd, int nXd) {
 	}
 
 	// set channel data for Channels [L][F][B][V][C][D]
-	setLFBVCD();
+	setLFBVCD(chd, n_chd);
 
 	/* Initialize emitter flows to 1 fps */
 	for (int i=1; i<=_net->Njuncs; i++)
@@ -446,7 +446,7 @@ void Solver::run(double *xd, int nXd) {
 	// run hydraulic simulation, netsolve() in hydraul.c
     int probNode; // link causing ill-conditionality
     double newerr = 0;  // error between subsequent iterations
-    int statChange;  // valve change flag
+    //int statChange;  // valve change flag
     int iter = 0;
 
     // iterative solver
@@ -477,9 +477,9 @@ void Solver::run(double *xd, int nXd) {
         ++iter;
         if (iter > MaxIter ) {
 			reportEWI(MAX_ITER_REACHED);
-            if (statChange) 
-				reportEWI(CV_PSV_PRV_PROB);
-            break;
+            //if (statChange) 
+			//	reportEWI(CV_PSV_PRV_PROB);
+            //break;
 		}
 	} while (newerr > Hacc);
 

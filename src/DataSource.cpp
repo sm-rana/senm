@@ -136,7 +136,7 @@ void DataSource::reportEWI(Err err) {
 
 DataSource::Err DataSource::addProvider(Provider* prov_in) {
 	unsigned n_new_chan;
-	Provider::Err perr;
+	//Provider::Err perr;
 
 	if (prov_in == NULL) return PROVIDER_INVALID;
 //	if (perr = prov_in->loadChannels(NULL)) {
@@ -228,10 +228,10 @@ DataSource::Err DataSource::fillSnapshots(Tstamp t_in, unsigned n, double* snaps
     Err err = OK;
 	//snapshots memory must be alloced,
 	if (snapshots == NULL) return MEM_NOT_ALLOCED;
-	unsigned j = 0;  //j - channel no.
+	int j = 0;  //j - channel no.
 	int fErr = 0;
 
-	for (unsigned i=0; i<=n; ++i) { // iterate through time steps
+	for (unsigned i=0; i<n; ++i) { // iterate through time steps
 		j=0;
 		for (Channel* chan_it=lsChan; 
 			chan_it; chan_it=chan_it->next) { 
@@ -661,7 +661,7 @@ Provider::Err Provider::loadChannels(Network* net) {
 		Channel* aChan = new Channel();
 		aChan->key = id;  
 		strncpy(aChan->name, (char*)net_id, MAX_NET_ID_LEN);
-		aChan->provider = this;
+		//aChan->provider = this;
 		switch (type[0]) {
 		case 'C': aChan->type = Channel::C; break;
 		case 'L': aChan->type = Channel::L; break; //actually, tank/reservior level

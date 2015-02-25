@@ -76,7 +76,7 @@ protected:
 
     /// mean or initial "baseline" for the model, dim=(n*1)
     /** applicable only for generators, normally mean is only
-       used in outmost model */
+       used in an outmost model */
 	double* mean;  
 
 	/* time series state info*/

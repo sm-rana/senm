@@ -57,6 +57,7 @@ struct Solver
         MAX_ITER_REACHED,
         CV_PSV_PRV_PROB,
 
+		CHAN_DATA_NOT_MATCH,
 		LAST_DUMMY_EWI
 	};
 
@@ -88,13 +89,11 @@ struct Solver
 	   \return   Number of run-time warnings issued 
 	   \sa report()
    */
-	void run(double* xd, int nXd);
+	void run(double* xd, int nXd, double* chd, int n_chd);
 
 	// compute log likelihood of hydraulic measurements given 
-	// the simulation results. If Snapshot is not provided, use the previously
-	// set snapshot, if snapshot is not previously set, use default control
-	// in the solver's network. network must be solved already
-	//double logLHyd(double* snapshot);
+	// the simulation results. network must be solved already
+	double logL(double* ch_data, int n_ch);
 
 	//> Get solver status
 	//status getStatus();
@@ -116,17 +115,40 @@ struct Solver
 	int N, M;  //Node counts, link counts
 
 
-	// Channel availability table, 1 ~ N: node; N+1 ~ N+M: link
+	// Channel availability table (CAT), 1 ~ N: node; N+1 ~ N+M: link
+	// using bit-wise operation to determine what channels are 
+	// availabel for an asset (LFVBAQCPD)
 	Channel::Type  *_tabCAT; 
+
+	// number of channels
 	int _nChan;
-	Channel* _lsChan; //channel list
-	double* _ss; //Channel data snapshot pointer(data stored in DataSource class)
+
+	// list of channels
+	Channel* _lsChan; 
+
+	//double* _ss; //Channel data snapshot pointer(data stored in DataSource class)
 
 	// stochastic/variable water demand (xd)
-	int  _nXd; // number of stochastic demands
-	int * _tabXd;  // stochastic (i.e. variable) water demand - node index lookup table
-	int * _tabIdx2Xd;  // junction index to xd index
-	double * _xd;  //pointer to the water demands array (data stored in Population class)
+
+	// number of stochastic demands
+	int  _nXd; 
+
+	//pointer to the water demands array (data stored in Population class)
+	double * _xd;  
+
+	// stochastic (i.e. variable) water demand - node index lookup table
+	// size = MaxJuncs (number of junctions) - number of D channels
+	// however, only the junctions with baseline demand > 0 will have an
+	// entry here.
+	int * _tabXd;  
+
+	// junction index to xd index. If no xd for this junction, index = -1
+	//size = MaxJuncs+1
+	int * _tabIdx2Xd;  
+
+	
+
+
 
 	// hydarulic engine configuration
 	double Htol; /* head tolerance */ 
@@ -192,7 +214,7 @@ public:
 	void initlinkflow(int link, char status, double setting);
 
 	/// set channel data for Channels [L][F][B][V][C][D]
-	void setLFBVCD();
+	EWICode setLFBVCD(double* chd, int n_ch);
 
     /// renew coefficients at the beginning of each iteration
     void newcoeffs();

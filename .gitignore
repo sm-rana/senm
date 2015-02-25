@@ -1,5 +1,10 @@
 /*
 *.user
+*.pdb
+*.idb
+*.log
+*.tlog
+*.obj
 
 
 # white list
