@@ -1,4 +1,5 @@
 #include "stdio.h"
+#include "stdlib.h"
 #include "VarModel.h"
 
 int main() {
@@ -42,6 +43,7 @@ Case 3:
 	y2 =	0		-0.2	 0.5 
 
 */
+	/*
 	int s1[] = {1, 24};
 	int p1[] = {2, 1};
 
@@ -138,7 +140,7 @@ Case 3:
 	double panel[] = {0.3, 0, 0.6, -0.2, -0.5, 0.5};
 	double llh;
 	int nea;
-	err = VarModel_logLikelihood(vm3, panel, 2, 3, &llh, &nea);
+	err = VarModel_logLikelihood(vm3, panel, 2, 3, &llh);
 	if (err != VARMODEL_OK) {
 		printf("Problem computing log-likelihood.\n");
 		return 4;
@@ -148,11 +150,65 @@ Case 3:
 
 	VarModel_dump(vm3);
 	VarModel_del(&vm3);
+*/
+
+	//Case 4 - Test for VarModel_estimate()
+	printf("\n Test 4: LS estimation\n");
+	int s4[] = {1, 24};
+	int p4[] = {1, 1};
+	int dim = 2;
+	double phi4[] = {0.8, 0, 0, 0.8, 1, 0, 0, 1};
+	double mu[] = {100, 150};
+	double cov[] = {100, 30, 30, 100};
+	
+	VarModel_Err vme;
+	VarModel * vm4;
+	vme = VarModel_new(dim, 1, s4, p4, &vm4);
+	if (vme != VARMODEL_OK) {
+		return 5;
+	}
+
+	vm4->mu = mu;
+
+	vme = VarModel_setPhi(vm4, phi4, 8);
+	if (vme != VARMODEL_OK) {
+		return 6;
+	}
+
+	vme = VarModel_setCov(vm4, cov, 4);
+	if (vme != VARMODEL_OK) {
+		return 7;
+	}
+
+	VarModel_dump(vm4);
+	
+	
+	char sample_file_name[] = "case4_samples.txt";
+	FILE* sample_file;
+	sample_file = fopen(sample_file_name, "r");
+
+	
+	int sample_size = 193;
+	fscanf(sample_file, "%d", &sample_size);
 
 
+	double* sample = (double*)calloc(sample_size*dim, sizeof(double));
+		
+	for (int i=0; i<sample_size; ++i) {
+		for (int id=0; id<dim; ++id) {
+			fscanf(sample_file, "%lf", &sample[id + dim* i]);
+		}
+	}
 
+	fclose(sample_file);
+	
 
+	vme = VarModel_estimate(vm4, sample, 2, sample_size);
+	if (vme) return 8;
 
+	free(sample);
+	VarModel_dump(vm4);
+	VarModel_del(&vm4);
 
 
 }

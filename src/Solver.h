@@ -91,9 +91,12 @@ struct Solver
    */
 	void run(double* xd, int nXd, double* chd, int n_chd);
 
+	/// solve the hydraulics using log-demand
+	void runlogd(double *lxd, int nxd, double* chd, int n_chd);
+
 	// compute log likelihood of hydraulic measurements given 
 	// the simulation results. network must be solved already
-	double logL(double* ch_data, int n_ch);
+	EWICode logL(double* ch_data, int n_ch, double* ll_out);
 
 	//> Get solver status
 	//status getStatus();

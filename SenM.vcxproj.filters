@@ -13,6 +13,9 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="SFMT_1.4">
+      <UniqueIdentifier>{31cda007-c90b-40cf-94b1-0f0ba17e9acd}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\DataSource.cpp">
@@ -44,6 +47,9 @@
     </ClCompile>
     <ClCompile Include="src\rngs\rvgs.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\SFMT_1.4\SFMT.c">
+      <Filter>SFMT_1.4</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -82,6 +88,18 @@
     </ClInclude>
     <ClInclude Include="src\SFMT_1.4\SFMT.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\SFMT_1.4\SFMT-common.h">
+      <Filter>SFMT_1.4</Filter>
+    </ClInclude>
+    <ClInclude Include="src\SFMT_1.4\SFMT-params.h">
+      <Filter>SFMT_1.4</Filter>
+    </ClInclude>
+    <ClInclude Include="src\SFMT_1.4\SFMT-params19937.h">
+      <Filter>SFMT_1.4</Filter>
+    </ClInclude>
+    <ClInclude Include="src\SFMT_1.4\SFMT-sse2.h">
+      <Filter>SFMT_1.4</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

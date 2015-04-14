@@ -219,24 +219,23 @@ void DataSource::dumpChannelsInfo() {
 		}
 
 		_ftprintf(stderr, TEXT(
-			"Channel {%d}: %s @ EPANET Idx %d(%s): Stat:%s\n"), 
-			chan_it->key, type, chan_it->mindex, A2T(chan_it->name), status);
+			"Channel {%d}: %s @ EPANET Idx %d(%s): stderr:%g\n"), 
+			chan_it->key, type, chan_it->mindex, A2T(chan_it->name), chan_it->stde);
 	}
 }
 
-DataSource::Err DataSource::fillSnapshots(Tstamp t_in, unsigned n, double* snapshots) {
+DataSource::Err DataSource::fillSnapshots(Tstamp t_in, int n, double* snapshots) {
     Err err = OK;
 	//snapshots memory must be alloced,
 	if (snapshots == NULL) return MEM_NOT_ALLOCED;
 	int j = 0;  //j - channel no.
 	int fErr = 0;
 
-	for (unsigned i=0; i<n; ++i) { // iterate through time steps
+	for (int i=0; i<n; ++i) { // iterate through time steps
 		j=0;
-		for (Channel* chan_it=lsChan; 
-			chan_it; chan_it=chan_it->next) { 
+		for (Channel* chan_it=lsChan; chan_it; chan_it=chan_it->next) { 
 				Provider::Err err = chan_it->provider->getDataAt(
-					t_in, -(int)i*dt, /* time shifts backward*/
+					t_in, -(n-1-i)*dt, /* time shifts backward*/
 					chan_it->key, &snapshots[i*n_chan + (j++)], NULL);
 				if (err) {
 					Provider::reportEWI(err);
@@ -628,20 +627,22 @@ Provider::Err Provider::loadChannels(Network* net) {
 	RETCODE rc;
 	SQLTCHAR sqltext[MAX_SQL_LEN];
 	_stprintf(sqltext, 
-		TEXT("SELECT id, net_id_str, msmt_t, l_lim, r_lim FROM %s;"), chan_tab);
+		TEXT("SELECT id, net_id_str, msmt_t, l_lim, r_lim, stde FROM %s;"), chan_tab);
 
 
 	SQLUINTEGER id; 
 	SQLCHAR net_id[MAX_NET_ID_LEN];
 	SQLCHAR type[2];
 	SQLDOUBLE llim, rlim; //left (lower) and right limits of the sensor
-	SQLLEN	id_indi, netid_indi, type_indi, ll_indi, rl_indi; //indicators
+	SQLDOUBLE stde; // sensor std err of measurements
+	SQLLEN	id_indi, netid_indi, type_indi, ll_indi, rl_indi, s_indi; //indicators
 
 	SQLBindCol(hStmt, 1, SQL_C_ULONG, &id, 0, &id_indi);
 	SQLBindCol(hStmt, 2, SQL_C_CHAR, &net_id, MAX_NET_ID_LEN, &netid_indi);
 	SQLBindCol(hStmt, 3, SQL_C_CHAR, &type, 2, &type_indi);
 	SQLBindCol(hStmt, 4, SQL_C_DOUBLE, &llim, 0, &ll_indi);
 	SQLBindCol(hStmt, 5, SQL_C_DOUBLE, &rlim, 0, &rl_indi);
+	SQLBindCol(hStmt, 6, SQL_C_DOUBLE, &stde, 0, &s_indi);
 
 	if (rc = SQLExecDirect(hStmt, sqltext, SQL_NTS)) {
 		handleDiagnosticRecord(hStmt, SQL_HANDLE_STMT, rc);
@@ -661,7 +662,7 @@ Provider::Err Provider::loadChannels(Network* net) {
 		Channel* aChan = new Channel();
 		aChan->key = id;  
 		strncpy(aChan->name, (char*)net_id, MAX_NET_ID_LEN);
-		//aChan->provider = this;
+		aChan->provider = this;
 		switch (type[0]) {
 		case 'C': aChan->type = Channel::C; break;
 		case 'L': aChan->type = Channel::L; break; //actually, tank/reservior level
@@ -677,6 +678,7 @@ Provider::Err Provider::loadChannels(Network* net) {
 
 		aChan->lower_lim = llim;
 		aChan->upper_lim = rlim;
+		aChan->stde = stde;
         if (net!=NULL) {
 			int idx = net->name2idx(aChan->name);
             if (idx==0) return CANT_FIND_COR_COMP;

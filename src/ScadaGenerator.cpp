@@ -328,8 +328,7 @@ SG_ERR SG_make(ScadaGenerator *sg, Tstamp* t0_in, int timespan) {
 		ENgettimeparam(EN_HTIME, &tempt);
 		sg->elapTime = iround*sg->dur + tempt;
 
-		if (stime == sg->dur) break; //don't compute last snapshot-will overlap with next round
-		scada_time_shift = iround*sg->dur + stime;
+		if (stime + step == sg->dur) break; //don't compute last snapshot-will overlap with next round
 
 		if (stime + step >= (istep)*sg->hstep) { 
 			//only set demand data in hstep-interval, (not at control step)
@@ -357,6 +356,7 @@ SG_ERR SG_make(ScadaGenerator *sg, Tstamp* t0_in, int timespan) {
 
 		// run hydraulic simulation
 		problem = ENrunH(&stime);
+		scada_time_shift = iround*sg->dur + stime;
 
 		if (debug) _ftprintf(stderr, TEXT(
 			"Hyd-sim @ %5.2f Hr (+ %d * %d s) \n "),

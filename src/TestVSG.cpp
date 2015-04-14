@@ -14,6 +14,16 @@ int main(int argc, char** argv) {
 USES_CONVERSION;
     //argv[1]: inp file
     //argv[2]: ini file
+	//argv[3]: "visual" generator
+
+	if (argc >= 4) {
+		if (strcmp(argv[3], "-v") == 0 || strcmp(argv[3], "-V") == 0 ) {
+			vis = 1;
+		} else {
+			vis = 0;
+		}
+	}
+
 
     //start time and time span
 	Tstamp t0 = { 2013, 4, 22,  0, 0, 0, 0 };
@@ -66,13 +76,14 @@ Varima* makeTestVarima(int nuser, float* ref_d) {
     // input/output of the model is log(demand)
 
 	Varima* vsar_h = new Varima(nuser, 1, 0, 0);  //p, q, d
-	Varima* vsar_d = new Varima(vsar_h, 1, 0, 24*4, 1); //P,Q,S,D
-	Varima* vsar_w = new Varima(vsar_d, 1, 0, 168*4, 1);
+	Varima* vsar_d = new Varima(vsar_h, 1, 0, 24, 1); //P,Q,S,D
+	//Varima* vsar_d = new Varima(vsar_h, 1, 0, 24*4, 1); //P,Q,S,D
+	//Varima* vsar_w = new Varima(vsar_d, 1, 0, 168*4, 1);
 
 	double cv = 0.0743;  //coefficient of  variation
 	double* phi_h = new double[nuser * 1];
 	double* phi_d = new double[nuser * 1];
-	double* phi_w = new double[nuser * 1];
+	//double* phi_w = new double[nuser * 1];
 
 	double* cov = new double[nuser*nuser];
 
@@ -81,15 +92,18 @@ Varima* makeTestVarima(int nuser, float* ref_d) {
 
 	for (int i=0; i<nuser; ++i) {
         phi_h[i] = 0.6001;
+        //phi_h[i+nuser] = 0.76001;
         phi_d[i] = -0.4582;
 
-		phi_w[i] = -0.7651; //  \Phi_1
+		//phi_w[i] = -0.7651; //  \Phi_1
 	      
 		for (int j=i; j<nuser; ++j) {
-			if (j==i) cov[i*nuser + j] = cov[j*nuser+i] = SQR(cv * ref_d[i]);
-			else { // set covariances randomly 
+			if (j==i) {
+				cov[i*nuser + j] = cov[j*nuser+i] = SQR(cv * ref_d[i]);
+			}
+			else { // set covariances (randomly)
 				cov[i*nuser + j]=cov[j*nuser+i] = 
-				  cv * ref_d[i] * ref_d[j] * rgp->Uniform(-0.5, 0.5);
+				  cv *cv * ref_d[i] * ref_d[j] * rgp->Uniform(-0.1, 0.1);
 			}
 		}
 	}
@@ -97,7 +111,7 @@ Varima* makeTestVarima(int nuser, float* ref_d) {
 	// test varima and generator
 	vsar_h->setPara(phi_h, NULL, cov);
 	vsar_d->setPara(phi_d, NULL, NULL);
-	vsar_w->setPara(phi_w, NULL, NULL);
+	//vsar_w->setPara(phi_w, NULL, NULL);
 
     //return vsar_w;
     return vsar_d;

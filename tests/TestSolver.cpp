@@ -75,6 +75,7 @@ void testSolver(void* sol_in, ScadaGenerator* sg) {
 		if (ixd != -1) XD[ixd] = tpD;
 	}
 
+	// TODO: Fix the solver test
 	solver->run(XD, solver->_nXd);
     free(XD);
 

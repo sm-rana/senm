@@ -19,6 +19,7 @@
     <ClCompile Include="src\Population.cpp" />
     <ClCompile Include="src\rngs\rvgs.cpp" />
     <ClCompile Include="src\senm.cpp" />
+    <ClCompile Include="src\SFMT_1.4\SFMT.c" />
     <ClCompile Include="src\Solver.cpp" />
     <ClCompile Include="src\VarModel.cpp" />
   </ItemGroup>
@@ -32,6 +33,10 @@
     <ClInclude Include="src\Population.h" />
     <ClInclude Include="src\rngs\rvgs.h" />
     <ClInclude Include="src\SenMCoreIncs.h" />
+    <ClInclude Include="src\SFMT_1.4\SFMT-common.h" />
+    <ClInclude Include="src\SFMT_1.4\SFMT-params.h" />
+    <ClInclude Include="src\SFMT_1.4\SFMT-params19937.h" />
+    <ClInclude Include="src\SFMT_1.4\SFMT-sse2.h" />
     <ClInclude Include="src\SFMT_1.4\SFMT.h" />
     <ClInclude Include="src\Solver.h" />
     <ClInclude Include="src\VarModel.h" />

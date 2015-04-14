@@ -52,7 +52,7 @@ struct Channel
 	//right now assume channel unit is consistent with network unit
 
 
-	double		rse;  ///>  relative standard error,=std. dev/mean,(assuming normal)
+	double		stde;  ///>  standard error of measurements (assuming normal)
 
 	double		lower_lim;  ///> lower limits of the possible measurements
 	double		upper_lim;  ///> upper limits

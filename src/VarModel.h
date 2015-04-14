@@ -50,7 +50,8 @@ enum VarModel_Err {
 	VARMODEL_ATRIX_ERROR,
 	VARMODEL_ARRAY_ERROR,
 	VARMODEL_NOT_ENOUGH_SAMPLE,
-	VARMODEL_DIM_ERR
+	VARMODEL_DIM_ERR,
+	VARMODEL_NO_AR_PARA
 };
 
 /// Create a Sari model
@@ -67,14 +68,20 @@ VarModel_Err VarModel_setPhi(VarModel* varm, double* phi_in, int phi_size);
 /// Set covariance matrix and compute cholesky decomposition
 VarModel_Err VarModel_setCov(VarModel* varm, double* cov_in, int cov_len);
 
-/// Set VAR mean to the average of panel data/or the param if dim=1
-VarModel_Err VarModel_setMu(VarModel* varm, double* panel, int panel_dim,
+/// Estimate the VAR mean to the average of panel data/or the param if dim=1
+VarModel_Err VarModel_estMu(VarModel* varm, double* panel, int panel_dim,
 							int panel_len);
 
 /// Compute log-likelihood, thread-safe
 VarModel_Err VarModel_logLikelihood(VarModel* varm, double* panel, 
 				int panel_dim, int panel_len, 
-				double* logl_out, int* nea_out /*effective no. w. noise*/);
+				double* logl_out, double* a_out=NULL, int n_a_out=0 /*effective no. w. noise*/);
+
+/// Estimate parameters from the provided data. original parameters poly and cov
+/// are overwritten
+// diff - Euclidean distance between old and new parameters
+VarModel_Err VarModel_estimate(VarModel* varm, double* panel, 
+				int panel_dim, int panel_size, double* diff, double* mdll);
 
 /*
 /// polynomial multiplication
@@ -92,4 +99,8 @@ void VarModel_dump(VarModel* varm);
 
 //Sari_Err VarModel_ErrRpt(Sari* sari, 
 
-
+void print_mat(double* p_mat, ///<matrix to be printed, column-major
+					  int n_row, 
+					  int n_col,
+					  char* name);
+	

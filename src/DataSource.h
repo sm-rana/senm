@@ -56,7 +56,7 @@ struct DataSource {
 
 	int n_prov;  ///> number of data providers 
 	int n_chan;  ///> number of data channels
-	unsigned	dt;  ///> time interval between snapshots, in seconds
+	int	dt;  ///> time interval between snapshots, in seconds
 
 	double* _datBuf;  ///> data buffer - most recent snapshot with updateBufSnapshot()
 	Provider* lsProv; ///> list of data providers, mem managed here
@@ -70,7 +70,7 @@ struct DataSource {
 	\param [in] prov      Initial data provider
 	\param [out] ds_out    newly creately datasource
 	*/
-	//static Err New(unsigned dt_in, Provider* prov, DataSource** ds_out);
+	//static Err New(int dt_in, Provider* prov, DataSource** ds_out);
 
 	/// Factory method: create a DataSource using a .ini configuration file
 	/** \param [in] ininame    INI configuration file name
@@ -98,13 +98,13 @@ struct DataSource {
 
 	/// Get consecutive n snapshots from the channels into pre-allocated arrays.
 	/**The method gets n consecutive snapshots at and before a specified time. 
-	Snapshots are taken at t_in, t_in-dt, t_in-2*dt, ...t_in - n_ss*dt
+	Snapshots are taken at t_in, t_in-dt, t_in-2*dt, ...t_in - (n_ss-1)*dt
 	The pointer snapshots should have n_chan*(n_ss) doubles allocated already.
 	\param [in]  t_in    Time stamp on which the data query is based	
 	\param [in]  n_ss       Number of snapshots needed 
 	\param [out]  snapshots   pointer to a double array
 	*/
-	Err fillSnapshots(Tstamp t_in, unsigned n_ss, double* snapshots);
+	Err fillSnapshots(Tstamp t_in, int n_ss, double* snapshots);
 
 	/// Get a single snapshot of data into pre-allocated arrays.
 	/** Get the most recent snapshot as of ct
@@ -142,7 +142,7 @@ struct Provider
 	SQLHSTMT	hStmt_w; ///> statement for writing data (scada generator)
 	int		hStmt_dat_prepared;  ///>  flag showing if the hStmt_dat handle is ready (prepared)
 	Channel*  lsChan; ///> channel list 
-	unsigned nChan; ///> number of channels
+	int nChan; ///> number of channels
 
 	/** Data connection error state*/
 	enum Err {

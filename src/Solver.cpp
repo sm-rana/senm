@@ -334,15 +334,6 @@ void Solver::reportEWI(EWICode code, Network::ComponentType ctype, int id1, int 
 
 }
 
-//
-//Solver::ECode Solver::setSnapshot(double* shot) {
-//	// Use the info in the (data) snapshot to set 
-//	// (1) link open/close status
-//	// (2) tank/reservoir level
-//	// (3) Known water demands
-//	return OK;
-//}
-
 Solver::EWICode Solver::setLFBVCD(double* chd, int n_ch) {
 	if (n_ch != this->_nChan) return CHAN_DATA_NOT_MATCH;
 	int iiCh = 0;
@@ -379,36 +370,46 @@ Solver::EWICode Solver::setLFBVCD(double* chd, int n_ch) {
 			break;
 		case Channel::C:
 			//set link status
-			if (chd[iiCh] == 1) { // open
-				S[iCh->mindex] = DISABLED;
-			} else {
-				S[iCh->mindex] = FULL_OPEN;
+			if (iCh->mindex <= _net->MaxPipes) {
+				//ignore pumps (if both F and C channels are present, use F)
+				if (chd[iiCh] == 0) { // closed
+					S[iCh->mindex] = DISABLED;
+				} else {
+					S[iCh->mindex] = FULL_OPEN;
+				}
 			}
 			break;
 		case Channel::D:
 			// add demand
-			D[iCh->mindex] += chd[iiCh]/_net->Ucf[Network::FLOW];
+			D[iCh->mindex] += chd[iiCh]/_net->Ucf[Network::DEMAND];
 			break;
 		}
 	}
 	return OK;
 }
 
+void Solver::runlogd(double *lxd, int nxd, double* chd, int n_chd) {
+	double* xd = (double*)calloc(nxd, sizeof(double));
+	for (int i = 0; i < nxd; ++i) {
+		xd[i] = exp(lxd[i]);
+	}
+	this->run(xd, nxd, chd, n_chd);
+	free(xd);
+}
+
 void Solver::run(double *xd, int nXd, double* chd, int n_chd) {
     // reset demands
-	for (int idm = 0; idm < _net->Nnodes+1; ++idm) {
-        D[idm] = 0.0;
-	}
+	memset(D, 0, sizeof(double)*(_net->Nnodes+1));
 
-	// set xd using demands 
+	// set demands using given data
 	if (nXd < _nXd) { // less water demands provided
 		for (int ixd = 0; ixd < nXd; ++ixd) {
-			D[_tabXd[ixd]] += xd[ixd];
+			D[_tabXd[ixd]] += (xd[ixd]/_net->Ucf[Network::DEMAND]);
 		}
         reportEWI(NOT_ENOUGH_XD, threadN);
 	} else {
 		for (int ixd = 0; ixd < this->_nXd; ++ixd) {
-			D[_tabXd[ixd]] += xd[ixd];
+			D[_tabXd[ixd]] += (xd[ixd]/_net->Ucf[Network::DEMAND]);
 		}
 		if (nXd > _nXd) { // more xd provided
             reportEWI(TOO_MANY_XD, threadN);
@@ -438,10 +439,13 @@ void Solver::run(double *xd, int nXd, double* chd, int n_chd) {
 	setLFBVCD(chd, n_chd);
 
 	/* Initialize emitter flows to 1 fps */
-	for (int i=1; i<=_net->Njuncs; i++)
-		if (_net->Node[i].Ke > 0.0 ||  // emitter
-            unsigned(_tabCAT[i]) & unsigned(Channel::B)) // B channel
+	for (int i=1; i<=_net->Njuncs; i++) {
+		if (_net->Node[i].Ke > 0.0 || _tabCAT[i] & Channel::B) {
+			// emitter or B channel
+			// TODO: investigate B channels
 			  E[i] = 1.0;
+		}
+	}
 
 	// run hydraulic simulation, netsolve() in hydraul.c
     int probNode; // link causing ill-conditionality
@@ -485,6 +489,35 @@ void Solver::run(double *xd, int nXd, double* chd, int n_chd) {
 
    /* Add any emitter flows to junction demands */
    for (int i=1; i<=_net->Njuncs; i++) D[i] += E[i];
+}
+
+Solver::EWICode Solver::logL(double* ch_data, int n_ch, double* ll_out) {
+	// compare P channel to H[], Q channel to Q[]
+	if (n_ch != _nChan) return CHAN_DATA_NOT_MATCH;
+
+	int ich = 0;
+	double ll = 0;
+	for (Channel* chan = _lsChan; chan != NULL; chan=chan->next, ++ich) {
+		int idx = chan->mindex;
+		if (chan->type == Channel::P) {
+			double el = _net->Node[idx].El;
+			double h = H[idx];
+			double p_obs = ch_data[ich]/_net->Ucf[Network::PRESSURE];
+			double p_std = chan->stde/_net->Ucf[Network::PRESSURE];
+			ll += ( -0.5 * log(2*_PI) - log(p_std) 
+					-0.5 * SQR((h-el - p_obs)/p_std));
+		}
+		if (chan->type == Channel::Q) {
+			double q = Q[idx];
+			double q_obs = ch_data[ich]/_net->Ucf[Network::FLOW];
+			double q_std = chan->stde/_net->Ucf[Network::FLOW];
+			ll += ( -0.5 * log(2*_PI) - log(q_std) 
+					-0.5 * SQR((q - q_obs)/q_std));
+		}
+	}
+
+	*ll_out = ll;
+	return OK;
 }
 
 int  Solver::linkstatus()
@@ -753,7 +786,7 @@ double Solver::newflows()
    for (k=1; k<=_net->Njuncs; k++)
    {
       if (_net->Node[k].Ke == 0.0 || 
-		  (unsigned(_tabCAT[k]) & unsigned(Channel::B) ) ) // b-emitter-conflict
+		  (_tabCAT[k] & Channel::B ) ) // b-emitter-conflict
 		  continue;
       dq = emitflowchange(k);
       E[k] -= dq;

@@ -48,6 +48,7 @@ Pop_Err Pop_new(int M,
 	if ( !prec->tmean || !prec->tsdev) 
 	{err = POP_MEM_NOT_ALLOCED; goto END;}
 
+	/*
 	if (d2 == 1) {// vector series
 		for (iw=0; iw<N_WORKERS; ++iw) {
 			for (int iac=0; iac<POP_MAX_ACF; ++iac) {
@@ -56,6 +57,7 @@ Pop_Err Pop_new(int M,
 			}
 		}
 	}
+	*/
 
 	for (iw=0; iw<N_WORKERS; ++iw) {
 		prec->clU1[iw] = (double*) calloc(d1*d2, sizeof(double));
@@ -118,6 +120,43 @@ static int Pop_chainCmp(const void* p1, const void* p2);
 // comparison in total pop
 static int Pop_TchainCmp(const void* p1, const void* p2);
 
+static int partition(Population* pop, int w, int id, int l, int r) {
+   int i, j, t;
+   int pivot_im = POPOS(pop, w, l, id); 
+   double pivot = POPH(pop, w, pivot_im, id);
+   i = l; j = r+1;
+		
+   while( 1)
+   {
+   	do ++i; while( i <= r && POPH(pop, w, POPOS(pop, w, i, id), id) <= pivot);
+   	do --j; while( POPH(pop, w, POPOS(pop, w, j, id), id) > pivot );
+   	if( i >= j ) break;
+   	t = POPOS(pop, w, i, id); 
+	POPOS(pop, w, i, id) = POPOS(pop, w, j, id); 
+	POPOS(pop, w, j, id) = t;
+   }
+   	t = POPOS(pop, w, l, id); 
+	POPOS(pop, w, l, id) = POPOS(pop, w, j, id); 
+	POPOS(pop, w, j, id) = t;
+ 
+   return j;
+}
+static void quick_sort(Population* pop, int w, int id, int l, int r)
+{
+   int j;
+
+   if( l < r ) 
+   {
+   	// divide and conquer
+        j = partition(pop, w, id, l, r);
+       quick_sort(pop, w, id, l, j-1);
+       quick_sort(pop, w, id, j+1, r);
+   }
+	
+}
+
+
+
 
 void Pop_calc(Population* pop) {
 	if (pop==NULL) return;
@@ -128,10 +167,10 @@ void Pop_calc(Population* pop) {
 	Population* sdpop;
 	if (Pop_new(pop->M, pop->d1, pop->d2, &sdpop, 1) != POP_OK)  return;
 
-	double perU1 = 1-(1-POP_CL_1)/2;  // percentiles
-	double perU2 = 1-(1-POP_CL_2)/2;
-	double perL2 = (1-POP_CL_2)/2;
-	double perL1 = (1-POP_CL_1)/2;
+	pop->perU1 = 1-(1-POP_CL_1)/2;  // percentiles
+	pop->perU2 = 1-(1-POP_CL_2)/2;
+	pop->perL2 = (1-POP_CL_2)/2;
+	pop->perL1 = (1-POP_CL_1)/2;
 
 	//calc single chain statistics
 	for (int iw=0; iw<N_WORKERS; ++iw){
@@ -144,8 +183,10 @@ void Pop_calc(Population* pop) {
 			double sumvar =  POP_SQR(pop->sdev[iw][id])*ps0[iw]; //sum of variance
 			double sumac[POP_MAX_ACF]; //sum of auto correlations
 
+			/*
 			if (pop->d2 == 1) for (int iac = 0; iac<POP_MAX_ACF; ++iac)
 				sumac[iac] = (pop->acor[iw][iac][id])* ps0[iw];
+				*/
 
 			for (int im=ps0[iw]; im<ps1[iw]; ++im) { //iterate chain items
 				sum += POPH(pop, iw, im, id);
@@ -160,32 +201,39 @@ void Pop_calc(Population* pop) {
 			double mean1=sum/ps1[iw];
 
 			//quick sort single chain os
-			Pop_curChain = iw;
-			Pop_curDim = id;
-			Pop_curInstance = pop;
-			qsort( (void*)(& POPOS(pop,iw,0,id)), ps1[iw], sizeof(int), Pop_chainCmp);  
+			// TODO: make this part thread safe
+			//Pop_curChain = iw;
+			//Pop_curDim = id;
+			//Pop_curInstance = pop;
+			if (ps1[iw]>1) quick_sort(pop, iw, id, 0, ps1[iw]-1) ;
 
 			// update single-chain order statistics to shadow pop
-			sdpop->clU1[iw][id] = POPH(pop,iw,POPOS(pop,iw,int(ps1[iw]*perU1),id),id);
-			sdpop->clU2[iw][id] = POPH(pop,iw,POPOS(pop,iw,int(ps1[iw]*perU2),id),id);
-			sdpop->clL2[iw][id] = POPH(pop,iw,POPOS(pop,iw,int(ps1[iw]*perL2),id),id);
-			sdpop->clL1[iw][id] = POPH(pop,iw,POPOS(pop,iw,int(ps1[iw]*perL1),id),id);
+			int osL1 = int(ps1[iw]*pop->perL1);
+			int osL2 = int(ps1[iw]*pop->perL2);
+			int osU1 = int(ps1[iw]*pop->perU1);
+			int osU2 = int(ps1[iw]*pop->perU2);
+			sdpop->clU1[iw][id] = POPH(pop,iw,POPOS(pop,iw,osU1,id),id);
+			sdpop->clU2[iw][id] = POPH(pop,iw,POPOS(pop,iw,osU2,id),id);
+			sdpop->clL2[iw][id] = POPH(pop,iw,POPOS(pop,iw,osL2,id),id);
+			sdpop->clL1[iw][id] = POPH(pop,iw,POPOS(pop,iw,osL1,id),id);
 
 			//update mean, stddev, and auto-correlations to shadow pop
 			sdpop->mean[iw][id] = mean1;
 			sdpop->sdev[iw][id] = sqrt((sumvar - ps1[iw]*POP_SQR(mean0-mean1))/ps1[iw]);
+			/*
 			if (pop->d2 == 1) for (int iac=0; iac<POP_MAX_ACF; ++iac) {
                 if (ps1[iw] > iac)
 				sdpop->acor[iw][iac][id] =  
 					(sumac[iac]-POP_SQR(mean0-mean1)*(ps1[iw]))/(ps1[iw]) ;
 			}
+			*/
 
 		}
 
 	}
 
+	//TODO: chain total stats
 	//calc total statistics
-
 	for (int id = 0; id<pop->d1*pop->d2; ++id) {
 		double tsum = 0;
 		int pssum = 0;
@@ -211,7 +259,7 @@ void Pop_calc(Population* pop) {
 		sdpop->tsdev[id]= sqrt(tsumvar/pssum);
 
 		//update order stat of total pop into shadow pop
-
+		/*
 		Pop_curInstance = pop;
 		Pop_curDim = id;
 		qsort ((void*) (& pop->_tos[id*tlen]), itos, sizeof(int), Pop_TchainCmp);
@@ -228,13 +276,16 @@ void Pop_calc(Population* pop) {
 
         code = pop->_tos[id*tlen + int(itos*perL1)];
 		sdpop->tclL1[id] = POPH(pop, code%N_WORKERS, code/N_WORKERS, id);
+		*/
 	}
 
 	//update real pop stat using shadow pop - protected by a rwlock
+	
 	AcquireSRWLockExclusive(&pop->statLoc);
 	for (int iw=0; iw<N_WORKERS; ++iw) {
-		pop->_ps[iw] = ps1[iw]; // report pointer
+		pop->_ps[iw] = ps1[iw]; // update report pointer
 	}
+	
 	for (int id=0; id<pop->d1*pop->d2; ++id) {
 		pop->tmean[id] = sdpop->tmean[id];
 		pop->tsdev[id] = sdpop->tsdev[id];
@@ -249,12 +300,15 @@ void Pop_calc(Population* pop) {
 			pop->clU2[iw][id] = sdpop->clU2[iw][id];
 			pop->clL2[iw][id] = sdpop->clL2[iw][id];
 			pop->clL1[iw][id] = sdpop->clL1[iw][id];
+			/*
 			if (pop->d2==1) for (int iac=0; iac<POP_MAX_ACF; ++iac) {
 				pop->acor[iw][iac][id] = sdpop->acor[iw][iac][id];
 			}
+			*/
 		}
 	}
 	ReleaseSRWLockExclusive(&pop->statLoc);
+
 }
 
 int Pop_TchainCmp(const void* p1, const void* p2) {
@@ -271,13 +325,14 @@ int Pop_TchainCmp(const void* p1, const void* p2) {
 	return (x1<x2?-1:(x1>x2?1:0));
 }
 
-
+/*
 int Pop_chainCmp(const void* p1, const void* p2) {
 	double x1 = POPH(Pop_curInstance, Pop_curChain, *(int*)p1, Pop_curDim);
 	double x2 = POPH(Pop_curInstance, Pop_curChain, *(int*)p2, Pop_curDim);
 
 	return (x1<x2?-1:(x1>x2?1:0));
 }
+*/
 
 void Pop_report(Population* pop, FILE* target) {
 	_ftprintf(target, 
@@ -300,20 +355,23 @@ void Pop_report(Population* pop, FILE* target) {
 			TEXT("\nDim (%u,%u): Mean-+Std.dev. {%6.2f-+%6.2f}"),
             id/pop->d1+1, id%pop->d1+1, pop->tmean[id], pop->tsdev[id]);
 
-        for (iw=0; iw<N_WORKERS; ++iw)
-            _ftprintf(target, TEXT(", %6.2f-+%6.2f"), pop->mean[iw][id], pop->sdev[iw][id]);
+        //for (iw=0; iw<N_WORKERS; ++iw)
+        //    _ftprintf(target, TEXT(", %6.2f-+%6.2f"), pop->mean[iw][id], pop->sdev[iw][id]);
 
-        _ftprintf(target,
-            TEXT("\n\tP%4.2f={%6.2f,%6.2f}"), POP_CL_1, pop->tclU1[id], pop->tclL1[id]);
-
-        for (iw=0; iw<N_WORKERS; ++iw)
-            _ftprintf(target, TEXT(", [%6.2f,%6.2f]"), pop->clU1[iw][id], pop->clL1[iw][id]);
-
-        _ftprintf(target,
-            TEXT("\n\tP%4.2f={%6.2f,%6.2f}"), POP_CL_2, pop->tclU2[id], pop->tclL2[id]);
+        //_ftprintf(target,
+        //    TEXT("\n\tP%4.2f={%6.2f,%6.2f}"), POP_CL_1, pop->tclU1[id], pop->tclL1[id]);
 
         for (iw=0; iw<N_WORKERS; ++iw)
-            _ftprintf(target, TEXT(", [%6.2f,%6.2f]"), pop->clU2[iw][id], pop->clL2[iw][id]);
+            _ftprintf(target, TEXT(", (%d-%d-%d-%d%%)=[%6.2f, %6.2f, %6.2f, %6.2f]"),
+			int(pop->perL1*100), int(pop->perL2*100), 
+			int(pop->perU2*100), int(pop->perU1*100),
+			pop->clL1[iw][id], pop->clL2[iw][id], pop->clU2[iw][id], pop->clU1[iw][id]);
+
+        //_ftprintf(target,
+        //    TEXT("\n\tP%4.2f={%6.2f,%6.2f}"), POP_CL_2, pop->tclU2[id], pop->tclL2[id]);
+
+        //for (iw=0; iw<N_WORKERS; ++iw)
+         //   _ftprintf(target, TEXT(", [%6.2f,%6.2f]"), );
 	}
     _ftprintf(target, TEXT("\n"));
 
@@ -323,15 +381,101 @@ void Pop_report(Population* pop, FILE* target) {
         _ftprintf(target, TEXT("Dim(%u) ACF:"), id);
         for (iac = 0; iac < POP_REP_ACF; ++iac) {
 			_ftprintf(target, TEXT(" <%u>"), iac);
+			/*
 			for (iw=0; iw< N_WORKERS; ++iw) 
 				_ftprintf(target, TEXT("%6.2f,"), 
 				  pop->acor[iw][iac][id]/POP_SQR(pop->sdev[iw][id]));
+				  */
 		}
         _ftprintf(target, TEXT("\n"));
 	}
 
 	ReleaseSRWLockShared(&pop->statLoc);
 }
+
+Pop_Err Pop_mean(Population* pop, double* mean_out, int dim, int burn_in) {
+	if (dim != pop->d1*pop->d2) return POP_DIM_MISMATCH;
+	if (burn_in >= pop->M) return POP_CHAIN_TOO_SHORT;
+
+	for (int iw=0; iw<N_WORKERS; ++iw) {
+		if (pop->p[iw] != pop->M) return POP_MEAN_NOT_READY;
+	}
+	for (int id=0; id<dim; ++id) {
+		mean_out[id] = 0;
+		for (int im = burn_in; im<pop->M; ++im) {
+			for (int iw = 0; iw < N_WORKERS; ++iw) {
+				mean_out[id] += POPH(pop, iw, im, id);
+			}
+		}
+		mean_out[id] /= N_WORKERS * (pop->M - burn_in);
+	}
+		
+	return POP_OK;
+}
+
+
+void Pop_reset(Population* pop) {
+	//reset all report pointers and stats
+	for (int iw = 0; iw < N_WORKERS; ++iw) {
+		pop->p[iw] = 0;
+		pop->_ps[iw] = 0;
+		memset(pop->mean[iw], 0, sizeof(double)*pop->d1*pop->d2);
+		memset(pop->sdev[iw], 0, sizeof(double)*pop->d1*pop->d2);
+		memset(pop->h[iw], 0, sizeof(double)*pop->M*pop->d1*pop->d2);
+		for (int im = 0; im < pop->M; ++im) {
+			for (int id = 0; id < pop->d1*pop->d2; ++id) {
+				POPOS(pop, iw, im, id) = im;
+			}
+		}
+	}
+
+	memset(pop->tmean, 0, sizeof(double)*pop->d1*pop->d2);
+	memset(pop->tsdev, 0, sizeof(double)*pop->d1*pop->d2);
+	memset(pop->tclL1, 0, sizeof(double)*pop->d1*pop->d2);
+	memset(pop->tclL2, 0, sizeof(double)*pop->d1*pop->d2);
+	memset(pop->tclU1, 0, sizeof(double)*pop->d1*pop->d2);
+	memset(pop->tclU2, 0, sizeof(double)*pop->d1*pop->d2);
+
+	//TODO: all chains order stat
+
+
+
+}
+
+void Pop_writeout(Population* pop, 
+				  char* filename, char* os_outfilename,
+				  int chain_head, int timestep) {
+
+	char out_full_filename[MAX_FILE_NAME_SIZE];
+	sprintf(out_full_filename, "%s%d", filename, timestep);
+	FILE* outfile = fopen(out_full_filename, "w");
+	if (outfile == NULL) { return; }
+
+	for (int im = 0; im < chain_head; ++ im) {
+		for (int id = 0; id < pop->d1 * pop->d2; ++id) {
+			fprintf(outfile, "%8.3f ", POPH(pop, 0, im, id));
+		}
+		fprintf(outfile, "\n");
+	}
+	fclose(outfile);
+
+	FILE* os_outfile; 
+	char os_full_filename[MAX_FILE_NAME_SIZE];
+	sprintf(os_full_filename, "%s%d", os_outfilename, timestep);
+	if (os_outfilename != NULL)  {
+		os_outfile = fopen(os_full_filename, "w");
+		for (int id = 0; id < pop->d1 * pop->d2; ++id) {
+			for (int im = 0; im < chain_head; ++im) {
+				fprintf(os_outfile, "%8.3f ", 
+					POPH(pop, 0, POPOS(pop, 0, im, id), id));
+			}
+			fprintf(os_outfile, "\n");
+		}
+		fclose(os_outfile);
+	}
+
+}
+
 
 void Pop_del(Population** ppop) {
     Population* pop = (*ppop);
@@ -341,10 +485,12 @@ void Pop_del(Population** ppop) {
 		free(pop->mean[iw]);
 		free(pop->sdev[iw]);
 
+		/*
 		if (pop->d2==1) {
 			for (int iac=0; iac<POP_MAX_ACF; ++iac)
 				free(pop->acor[iw][iac]);
 		} 
+		*/
 
 		free(pop->clU1[iw]);
 		free(pop->clU2[iw]);

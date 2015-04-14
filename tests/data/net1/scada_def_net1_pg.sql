@@ -9,6 +9,7 @@ CREATE TABLE channels (
 			msmt_t	CHAR NOT NULL,
 			l_lim	DOUBLE PRECISION,
 			r_lim	DOUBLE PRECISION,
+			stde	DOUBLE PRECISION,
 			info	VARCHAR(255),
 			
 			PRIMARY KEY (id)
@@ -38,19 +39,20 @@ INSERT INTO channels (net_id_str, msmt_t, l_lim, r_lim) VALUES
 
 
 -- Online sensors - flowrates
-INSERT INTO channels (net_id_str, msmt_t, l_lim, r_lim) VALUES
-	('PU9', 'F', -1000, 1000), 
+INSERT INTO channels (net_id_str, msmt_t, l_lim, r_lim, stde) VALUES
+	('PU9', 'F', -1000, 1000, 100), 
 
-	('P11', 'Q', -200, 200),('P21', 'Q', -200, 200),
-	('P110', 'Q', -200, 200), ('P31', 'Q', -200, 200),
-	('P121', 'Q', -200, 200);
+	('P11', 'Q', -2000, 2000, 100),('P21', 'Q', -2000, 2000, 20),
+	('P110', 'Q', -2000, 2000, 100), ('P31', 'Q', -2000, 2000, 15),
+	('P121', 'Q', -2000, 2000, 20);
 
 -- Online sensors - pressures
-INSERT INTO channels (net_id_str, msmt_t) VALUES
-    ('10', 'B'),
+INSERT INTO channels (net_id_str, msmt_t, stde) VALUES
+    ('10', 'B', 10),
 
-	('12', 'P'), ('21', 'P'), ('31', 'P'), ('10', 'P'), ('22', 'P'),
-	('32', 'P');
+	('12', 'P', 10), ('21', 'P', 10), ('31', 'P', 10), ('10', 'P', 10), ('22',
+        'P', 10),
+	('32', 'P', 10);
 
 -- online sensor - real-time water meters
 

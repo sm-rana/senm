@@ -66,15 +66,17 @@ struct Population {
 
     /// autocovariances for vector time series, only available 
 	/// for 1d data (d2==1)
-	double* acor[N_WORKERS][POP_MAX_ACF]; 
+	//double* acor[N_WORKERS][POP_MAX_ACF]; 
 
-    /// order statistics - ranks in a single chain (1d only)
-    /** _os[iw][id*M + j] is the index(im) of the jth smallest value in h[] for
-     the id-th element in the iw-th chain */
+    /// order statistics - ranks in a single chain 
+    /** _os[iw][id  + im*d1*d2] is the index (im in h[]) of the im-th smallest 
+	 value in h[] for the id-th element in the iw-th chain */
 	int *_os[N_WORKERS];  
 
     /// order statistics - ranks in all chains
     int *_tos;
+
+	double perU1, perU2, perL1, perL2;
 
 	double* clU1[N_WORKERS];  ///> credible limit upper: 1st. each chain (i.e., 97.5% percentile)
 	double* clL1[N_WORKERS];  ///> credible limit lower: 1st
@@ -93,6 +95,9 @@ enum Pop_Err {
 		POP_OK,
 		POP_MEM_NOT_ALLOCED,
 		POP_INPUT_ERR,
+		POP_DIM_MISMATCH,
+		POP_CHAIN_TOO_SHORT,
+		POP_MEAN_NOT_READY,
 
 		POP_DUMMY_LAST};
 
@@ -110,9 +115,22 @@ Pop_Err Pop_new(int M_in, int d1_in, Population** pop_out) ;
 
 void Pop_del(Population** pop);
 
+//report means excluding samples for burning-in
+Pop_Err Pop_mean(Population* pop, double* mean_out, int dim, int burn_in=0);
+
 ///> report statistics
 void Pop_report(Population* pop, FILE* target=stdout);
 
+//TODO: update also stats pointers p[]
 ///> Update all statistics. 
 void Pop_calc(Population* pop);
+
+///> Reset all statistics
+void Pop_reset(Population* pop);
+
+
+///> Dump the poplulation to a data file
+void Pop_writeout(Population* pop, 
+				  char* filename, char* os_outfilename=NULL,
+				  int interval=0, int t=0);
 

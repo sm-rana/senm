@@ -7,7 +7,6 @@
 #include "clapack_3.2.1\clapack.h"
 #include "VarModel.h"
 
-#define PI 3.14159265
 
 VarModel_Err VarModel_new(int n_in,  ///< dimension
 				  int ns_in, ///< seasonality
@@ -173,7 +172,7 @@ static void print_mat(int* p_mat, ///<matrix to be printed, column-major
 	}
 }
 
-static void print_mat(double* p_mat, ///<matrix to be printed, column-major
+void print_mat(double* p_mat, ///<matrix to be printed, column-major
 					  int n_row, 
 					  int n_col, 
 					  char* name) {
@@ -252,13 +251,16 @@ void VarModel_dump(VarModel* varm) {
 
 	print_vec(varm->mu, varm->n, "mu");
 	//print_mat(varm->phi, varm->n, varm->n*varm->phi_cnt, "phi");
-	print_mat(varm->poly, varm->n, varm->n*varm->npos, "poly");
+	int n = varm->n;
+	for (int i = 0; i<varm->npos; ++i) {
+		print_mat(&varm->poly[i*n*n], n, n, "poly");
+	}
 	print_vec(varm->pos, varm->npos, "pos");
 
 	print_mat(varm->cov, varm->n, varm->n, "cov");
 	print_lmat(varm->lcov, varm->n, varm->n, "lcov");
 
-	printf("Determinant of the covariance matrix: %7.3f\n", 
+	printf("Determinant of the covariance matrix: %g\n", 
 		SQR(varm->sqrt_d));
 
 }
@@ -300,7 +302,7 @@ VarModel_Err VarModel_setCov(VarModel* varm,
 	return VARMODEL_OK;
 }
 
-VarModel_Err VarModel_setMu(VarModel* varm, double* panel, int panel_dim,
+VarModel_Err VarModel_estMu(VarModel* varm, double* panel, int panel_dim,
 							int panel_len) {
 	if (panel_dim != varm->n) {
 		printf("Error dimensions of the panel data.\n");
@@ -325,7 +327,8 @@ VarModel_Err VarModel_setMu(VarModel* varm, double* panel, int panel_dim,
 
 
 VarModel_Err VarModel_logLikelihood(VarModel* varm, double* panel,
-			int panel_dim, int panel_len, double* logl_out, int* nea_out) {
+			int panel_dim, int panel_len, double* logl_out, 
+			double* a_out, int n_a) {
 
 	int nea = panel_len - varm->lb;
 	if (nea <= 0) {
@@ -333,10 +336,12 @@ VarModel_Err VarModel_logLikelihood(VarModel* varm, double* panel,
 		return VARMODEL_NOT_ENOUGH_SAMPLE;
 	}
 
-	*nea_out = nea;
+	if (a_out != NULL && n_a != nea) {
+		return VARMODEL_ARRAY_ERROR;
+	}
 
 	double tl; // temp variable for log-likelihood
-	tl = nea * ( -0.5*panel_dim*log(2*PI) - log(varm->sqrt_d));
+	tl = nea * ( -0.5*panel_dim*log(2*_PI) - log(varm->sqrt_d));
 
 	// two temporary arrays
 	double* w = (double*)calloc(panel_dim, sizeof(double));
@@ -345,6 +350,7 @@ VarModel_Err VarModel_logLikelihood(VarModel* varm, double* panel,
 	integer n = panel_dim;
 	integer inc = 1;
 	double alpha, beta;
+	int ia_out = 0;
 
 	for (int t=varm->lb; t<panel_len; ++t) {
 		//log-likelihood for each realization of white noise
@@ -359,8 +365,13 @@ VarModel_Err VarModel_logLikelihood(VarModel* varm, double* panel,
 
 			//compute with char. polyn. 
 			alpha = 1; beta = 1;
-			dgemv_("n", &n, &n, &alpha, &varm->poly[n*n*varm->pos[ip]], &n,
+			//dgemv_("n", &n, &n, &alpha, &varm->poly[n*n*varm->pos[ip]], &n,
+			dgemv_("n", &n, &n, &alpha, &varm->poly[n*n*ip], &n,
 				   w, &inc, &beta, a, &inc);
+		}
+		// output a
+		if (a_out != NULL) {
+			memcpy(&a_out[(ia_out++)*panel_dim], a, sizeof(double)*panel_dim);
 		}
 		
 		// from pdf of multi-normal dist.
@@ -381,8 +392,110 @@ VarModel_Err VarModel_logLikelihood(VarModel* varm, double* panel,
 }
 
 
+VarModel_Err VarModel_estimate(VarModel* vm, double* panel, int dim, int len, double* diff, double* mdll) {
+
+	//double *tp = (double*)malloc(200*sizeof(double));
+	*diff = 0;
+
+	if (dim != vm->n) return VARMODEL_DIM_ERR;
+	if (len <= vm->lb) return VARMODEL_NOT_ENOUGH_SAMPLE;
+	if (vm->npos <= 0) return VARMODEL_NO_AR_PARA;
+
+	// update mean
+	//memset(vm->mu, 0, sizeof(double)*dim);
+	double mu0;
+	for (int i=0; i<dim; ++i) {
+		mu0 = vm->mu[i];
+		vm->mu[i] = 0;
+		for (int t=0; t<len; ++t) {
+			vm->mu[i] += panel[i + t*dim];
+		}
+		vm->mu[i] /= len;
+		*diff += SQR(mu0-vm->mu[i]);
+	}
+
+	// construct matrix A in Ax=b regression
+	int T = len - vm->lb;
+	int p = vm->npos - 1;
+	int m = T*dim;  // no. of rows;
+	int n = dim*dim*p;  // no. of columns
+	if (m<n) return VARMODEL_NOT_ENOUGH_SAMPLE;
+
+	double *A = (double*)calloc(m*n, sizeof(double));
+	double* b = (double*)calloc(dim*T, sizeof(double));
+
+	for (int j = 0; j < T; ++j) {
+		for (int ipos = 1; ipos < vm->npos; ++ipos) {
+			for (int idim = 0; idim < dim; ++idim) {
+				//element of A
+				int i = (ipos-1)*dim + idim;
+				double a = panel[(vm->lb - vm->pos[ipos] + j)*dim + idim] - vm->mu[idim]; 
+				for (int k=0; k<dim; ++k) {
+					A[j*dim+k + T*dim * (i*dim + k)] = a; //A' (*) I
+				}
+			}
+		}
+	}
+
+	// adjust panel by mean values
+	for (int i = 0; i < dim; ++i) {
+		for (int j = 0; j < T; ++j) {
+			b[i + j*dim] = panel[i + (vm->lb+j)*dim] - vm->mu[i];
+		}
+	}
 
 
+	// LS solver: lapack dgelss()
+	integer m1 = m;
+	integer n1 = n;
+	integer nrhs = 1;
+	double rcond = 1e5;  //
+	integer rank = 0;
+	double* s = (double*)calloc(n, sizeof(double)); //singular values
+	integer info;
 
+	// workspace query first, check mkl. man.
+	integer lwork = -1; 
+	double* work = (double*)calloc(1, sizeof(double));;  //temp array
 
+	dgels_("N", &m1, &n1, &nrhs, A, &m1, b, &m1, work, &lwork, &info);
+	//dgelss_(&m1, &n1, &nrhs, A, &m1, b, &m1, s, &rcond, &rank, work, &lwork, &info);  
 
+	// LS regression
+	lwork = integer(work[0]);
+	work = (double*)realloc(work, sizeof(double)*lwork);
+	dgels_("N", &m1, &n1, &nrhs, A, &m1, b, &m1, work, &lwork, &info);
+	//dgelss_(&m1, &n1, &nrhs, A, &m1, b, &m1, s, &rcond, &rank, work, &lwork, &info);  
+
+	// update vm->poly
+	for (int i = 0; i< n; ++i ) {
+		*diff += SQR(b[i]-vm->poly[dim*dim+i]);
+	}
+	memcpy(&vm->poly[dim*dim], b, sizeof(double)*n);
+	
+	// update cov and lcov
+	double dy_ll;
+	double* rsd = (double*)calloc(T*dim, sizeof(double));
+	VarModel_logLikelihood(vm, panel, dim, len, &dy_ll, rsd, T);
+	double* cov = (double*)calloc(dim*dim, sizeof(double));
+	for (int i = 0; i<dim; ++i) {
+		for (int j=0; j<dim; ++j) {
+			for (int ir = 0; ir < T; ++ir) {
+				cov[i + j*dim] += rsd[i + dim*ir] * rsd[j + dim*ir];
+			}
+			cov[i + j*dim] /= T;
+		}
+	}
+
+	for (int i=0; i<dim*dim; ++i) {
+		*diff += SQR(vm->cov[i]-cov[i]);
+	}
+	VarModel_setCov(vm, cov, dim*dim);
+	// compute the final max dmll
+	VarModel_logLikelihood(vm, panel, dim, len, mdll);
+
+	free(work);
+	free(b);
+	free(A);
+	return VARMODEL_OK;
+}
