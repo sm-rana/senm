@@ -5,6 +5,7 @@
 #include <vtkDoubleArray.h>
 #include <vtkPoints.h>
 #include <vtkProperty2D.h>
+#include <vtkPropAssembly.h>
 
 #include <vtkTransform.h>
 

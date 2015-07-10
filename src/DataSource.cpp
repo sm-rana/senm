@@ -259,7 +259,7 @@ DataSource::Err DataSource::fillASnapshot(CTime ct, double* snapshot) {
 	tp.minute = ct.GetMinute();
 	tp.second = ct.GetSecond();
 	tp.fraction = 0;
-	Err ec =  fillSnapshots(tp, 0, snapshot);
+	Err ec =  fillSnapshots(tp, 1, snapshot);
 	//update data buffer
 	//    for (int iChan = 0; iChan<n_chan; ++iChan) {
 	//      _datBuf[iChan] = snapshot[iChan];

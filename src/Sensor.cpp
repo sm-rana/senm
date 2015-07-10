@@ -1,7 +1,7 @@
 #include <Windows.h>
 #include <tchar.h>
 #include <math.h>
-#include "vtkincludes.h"
+#include "SenmVtkIncs.h"
 #include "Sensor.h"
 
 //default values

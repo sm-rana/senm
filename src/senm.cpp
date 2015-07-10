@@ -352,13 +352,13 @@ int main(int argc, char** argv) {
 				if (! has_wrong_demand) {
 					// hydraulic likelihood
 					if (is_dev_demand) {
-						sv->run(real_demand, dim, &scada[t], n_ch);
+						sv->run(real_demand, dim, &scada[t*n_ch], n_ch);
 					} else if (is_log_demand) {
-						sv->runlogd(cur_xd, dim, &scada[t], n_ch);
+						sv->runlogd(cur_xd, dim, &scada[t*n_ch], n_ch);
 					} else {
-						sv->run(cur_xd, dim, &scada[t], n_ch);
+						sv->run(cur_xd, dim, &scada[t*n_ch], n_ch);
 					}
-					sv->logL(&scada[t], n_ch, &cur_ll);
+					sv->logL(&scada[t*n_ch], n_ch, &cur_ll);
 
 					//compute demand likelihood
 					double dm_ll=0;
@@ -448,8 +448,8 @@ int main(int argc, char** argv) {
 					+ buf[(vm->lb+t)*dim+i];
 			}
 	
-			sv->run(real_demand, dim, &scada[t], n_ch);
-			sv->logL(&scada[t], n_ch, &mhllt);
+			sv->run(real_demand, dim, &scada[t*n_ch], n_ch);
+			sv->logL(&scada[t*n_ch], n_ch, &mhllt, true);
 			mhll += mhllt;
 		}
 		printf("Sum of changes in parameters: "

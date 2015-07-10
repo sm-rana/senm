@@ -16,7 +16,7 @@ for more details.   */
 	Visual widgets representing sensors/monitors in a distribution system.
 */
 #pragma once
-#include "vtkincludes.h"
+#include "SenmVtkIncs.h"
 #include "Network.h"
 #include "DataSource.h"
 

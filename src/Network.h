@@ -544,6 +544,9 @@ struct Network {
 	Spump    *Pump;                 /* Pump data                    */
 	Svalve   *Valve;                /* Valve data                   */
 
+	// Look up table: user id to node id
+	int* uid2nid;
+
 	// Quick indexing arrays, the listed items have different treatment
 	// in EPANET and SenM
 	int* tPumpGPV;    // pumps and GPVs

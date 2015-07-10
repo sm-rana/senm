@@ -62,7 +62,9 @@ VisNetwork::VisNetwork():
 		jcell[0] = _net->Link[i].N1 - 1; // to vis index
 		jcell[1] = _net->Link[i].N2 - 1;
 		_tabIdx2cellL[i] = cl->InsertNextCell(2, jcell) + 
-			ca->GetNumberOfCells(); // this is very important to make each line cell id right when using the table to fetch
+			ca->GetNumberOfCells(); 
+		// this is very important to make each line cell id 
+		// right when using the table to fetch
 	}
 
 	_net3d = vtkPolyData::New();
@@ -73,12 +75,14 @@ VisNetwork::VisNetwork():
 		_net3d->SetVerts(ca);
 		_net3d->SetLines(cl);
 		_net3d->GetPointData()->SetScalars(scalar_data);
+		_net3d->BuildCells();
 	}
 	if (_net2d) {
 		_net2d->SetPoints(pts2);
 		_net2d->SetVerts(ca);
 		_net2d->SetLines(cl);
 		_net2d->GetPointData()->SetScalars(scalar_data);
+		_net2d->BuildCells();
 	}
 	pts3->Delete();
 	pts2->Delete();
@@ -144,17 +148,20 @@ vtkIdType VisNetwork::netId2CellId(char* netId, Network::FieldType type) {
 	}
 	return -1;
 }
-vtkIdType VisNetwork::netId2CellId(char* netId, Network::FieldType type) {
+vtkIdType VisNetwork::netId2CellId(char* netId, Channel::Type type) {
 	//lookup cell id
+	Network::HTIt jit;
 	switch (type) {
 	case Channel::L:
 	case Channel::P:
 	case Channel::D:
-		Network::HTIt jit = _net->Nht.find(netId);
+	case Channel::B:
+	case Channel::A:
+		jit = _net->Nht.find(netId);
 		if (jit == _net->Nht.end() ) return -1; //can't find the id
 		return index2CellId(jit->second, type);
 	default:
-		Network::HTIt jit = _net->Lht.find(netId);
+		jit = _net->Lht.find(netId);
 		if (jit == _net->Lht.end() ) return -1; //can't find the id
 		return index2CellId(jit->second, type);
 	}

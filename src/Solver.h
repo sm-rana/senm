@@ -96,7 +96,7 @@ struct Solver
 
 	// compute log likelihood of hydraulic measurements given 
 	// the simulation results. network must be solved already
-	EWICode logL(double* ch_data, int n_ch, double* ll_out);
+	EWICode logL(double* ch_data, int n_ch, double* ll_out, bool disp_res=false);
 
 	//> Get solver status
 	//status getStatus();

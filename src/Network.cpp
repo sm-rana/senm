@@ -494,8 +494,10 @@ Network::ErrorCode Network::loadInp(FILE* InFile) {
 		// compute Nusers;
 		Nusers = 0;
 		Nemitters = 0;
+		uid2nid = (int*)calloc(Nnodes, sizeof(int));
 		for (int ii = 1; ii<=MaxJuncs; ++ii) {
 			if (Node[ii].D && Node[ii].D->Base >0) {
+				uid2nid[Nusers] = ii;
 				Nusers++; 
 			}
 			if (Node[ii].Ke  >0) Nemitters++; 

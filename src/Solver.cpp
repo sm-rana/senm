@@ -491,7 +491,7 @@ void Solver::run(double *xd, int nXd, double* chd, int n_chd) {
    for (int i=1; i<=_net->Njuncs; i++) D[i] += E[i];
 }
 
-Solver::EWICode Solver::logL(double* ch_data, int n_ch, double* ll_out) {
+Solver::EWICode Solver::logL(double* ch_data, int n_ch, double* ll_out, bool disp_res) {
 	// compare P channel to H[], Q channel to Q[]
 	if (n_ch != _nChan) return CHAN_DATA_NOT_MATCH;
 
@@ -506,6 +506,8 @@ Solver::EWICode Solver::logL(double* ch_data, int n_ch, double* ll_out) {
 			double p_std = chan->stde/_net->Ucf[Network::PRESSURE];
 			ll += ( -0.5 * log(2*_PI) - log(p_std) 
 					-0.5 * SQR((h-el - p_obs)/p_std));
+			if (disp_res) 
+				printf("%d, %f, %f, ", idx, p_obs, h-el);
 		}
 		if (chan->type == Channel::Q) {
 			double q = Q[idx];
@@ -513,9 +515,11 @@ Solver::EWICode Solver::logL(double* ch_data, int n_ch, double* ll_out) {
 			double q_std = chan->stde/_net->Ucf[Network::FLOW];
 			ll += ( -0.5 * log(2*_PI) - log(q_std) 
 					-0.5 * SQR((q - q_obs)/q_std));
+			if (disp_res) printf("%d, %f, %f, ", idx, q_obs, q);
 		}
 	}
 
+	if (disp_res) printf("\n");
 	*ll_out = ll;
 	return OK;
 }

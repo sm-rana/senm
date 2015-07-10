@@ -2,6 +2,7 @@
 // If vis = 1, Use Vtk to visualize network demands and hydraulics
 #include <process.h>
 #include <Windows.h>
+#include "Varima.h"
 #include "ScadaGenerator.h"
 #include "VisScadaGenerator.h"
 
