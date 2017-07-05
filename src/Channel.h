@@ -9,23 +9,23 @@ struct Provider ;
 /** The struct stores descriptive information about a data channel.
 Data channels must be created and destroyed by Provider::loadChannels(),
 */
+//masud: Channel class is instantiated in DataSource.cpp
 struct Channel
 {	
 	int			key;		///> channel key (e.g., database primary key)
 
 	/// Channel Types
 	enum Type {
-		NONE = 0, ///>No channel
-		L = 0x1, ///> Water level
-		F = 0x2, ///> Pump flow rate
-		V = 0x4, ///> Minor headloss coefficient for TCV, FCV
-		B = 0x8, ///> Discharge-side pressure
-		A = 0x10, ///> Suction-side pressure
-		Q = 0x20, ///> Pipe flow rate 
-		C = 0x40, ///> Pipe/valve on/off
-		P = 0x80, ///> Nodal pressure
-		D = 0x100, ///> Real-time demand (flow meter)
-
+		NONE = 0, //>No channel
+		L = 0x1, //> Water level
+		F = 0x2, // Pump flow rate
+		V = 0x4, // Minor headloss coefficient for TCV, FCV
+		B = 0x8, // Discharge-side pressure
+		A = 0x10, // Suction-side pressure
+		Q = 0x20, // Pipe flow rate 
+		C = 0x40, // Pipe/valve on/off
+		P = 0x80, // Nodal pressure
+		D = 0x100, //> Real-time demand (flow meter)
 	};
 	Type    type;  ///> type of the channel
 
@@ -42,11 +42,11 @@ struct Channel
 		}
 	}
 
-	int			mindex;  ///> index in the hydraulic network
+	int			mindex;  // index in the hydraulic network
 
-	Provider	*provider;  ///> data provider
+	Provider	*provider;  // data provider
 
-	char		name[MAX_NET_ID_LEN];  ///>  name of the component, consistent with network component id string
+	char		name[MAX_NET_ID_LEN];  //  name of the component, consistent with network component id string
 
 	//DataSource::UnitsType  unit; ///> unit of measurement, work is needed here
 	//right now assume channel unit is consistent with network unit
@@ -61,9 +61,9 @@ struct Channel
 	///>  if the the sensor has anormaly, measurements will default to this value
 
 	enum Status {OK, DATA_ERR, DATA_OUTBOUND};
-	Status		status;  ///>  working status of this channel
+	Status		status;  //>  working status of this channel
 
-	Channel*	next;   ///> next channel in a list
+	Channel*	next;   //> next channel in a list //masud: this is actually "previous" instead of "next"
 
 	/// fetch the type string of a channel 
 	/**  str must have MAX_COMP_TYPE_STR_SIZE tchars allocated */

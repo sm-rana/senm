@@ -90,13 +90,17 @@ struct Solver
 	   \sa report()
    */
 	void run(double* xd, int nXd, double* chd, int n_chd);
+	//masud: copy of run() with added printing functionality and clustering (6-7-2016)
+	//is_cluster is the flag for clustering
+	void run2(double* xd, int nXd, double* chd, int n_chd, int* cluster_id, int is_cluster);
 
 	/// solve the hydraulics using log-demand
 	void runlogd(double *lxd, int nxd, double* chd, int n_chd);
 
 	// compute log likelihood of hydraulic measurements given 
 	// the simulation results. network must be solved already
-	EWICode logL(double* ch_data, int n_ch, double* ll_out, bool disp_res=false);
+	EWICode logL(double* ch_data, int n_ch, double* ll_out, bool disp_res=false, bool sm_debug = false); //masud: adding the last parameter
+	EWICode logL2(double* ch_data, int n_ch, double* ll_out, FILE** pfp, bool disp_res = false); //masud: adding the last parameter
 
 	//> Get solver status
 	//status getStatus();
@@ -186,7 +190,7 @@ struct Solver
 	*/
 
 	// Hydraulic engine internals
-	double   *D,                    /* Node actual demand           */
+	double   *D,                    /* D = Node actual demand, E = Emitter flows, K = Coefficient, Q = Link Flows, X = general purpose array     */
 		*E,                    /* Emitter flows                */
 		*K,                    /* Link settings                */
 		*Q,                    /* Link flows                   */
@@ -205,11 +209,12 @@ public:
 	LinkStatus     *S;                    /* Link status                  */
 
 	// Sparse matrix solver, XLNZ, NZSUB, and LNZ are fixed and thus stored in Network class
-	double   *Aii,        /* Diagonal coeffs. of A               */
-		*Aij,        /* Non-zero, off-diagonal coeffs. of A */
-		*F;          /* Right hand side coeffs.             */
-	double   *P,          /* Inverse headloss derivatives        */
-		*Y;          /* Flow correction factors             */
+
+	double  *Aii;       //  Diagonal coeffs. of A          
+	double	*Aij;       //  Non-zero, off-diagonal coeffs. of A 
+	double	*F;          // Right hand side coeffs.             
+	double  *P;          // Inverse headloss derivatives        
+	double	*Y;          // Flow correction factors             
 
     double  *B;  ///> B channel data (discharge-side pressure)
 

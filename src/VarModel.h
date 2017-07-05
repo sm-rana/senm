@@ -55,9 +55,7 @@ enum VarModel_Err {
 };
 
 /// Create a Sari model
-VarModel_Err VarModel_new(int n_in, int ns_in, 
-				  int* s_in, int* p_in, 
-				  VarModel** varm_out);
+VarModel_Err VarModel_new(int n_in, int ns_in, int* s_in, int* p_in, VarModel** varm_out);
 
 /// Destroy a Sari model
 void VarModel_del(VarModel** varm);
@@ -83,6 +81,7 @@ VarModel_Err VarModel_logLikelihood(VarModel* varm, double* panel,
 VarModel_Err VarModel_estimate(VarModel* varm, double* panel, 
 				int panel_dim, int panel_size, double* diff, double* mdll);
 
+VarModel_Err VarModel_estimate2(VarModel* vm, double* panel, int dim, int len, double* diff, double* mdll);//masud: for debugging
 /*
 /// polynomial multiplication
 void VarModel_poly_mlpl(int* poly_a, ///< a polynomial (phi indices)
@@ -96,6 +95,7 @@ void VarModel_poly_mlpl(int* poly_a, ///< a polynomial (phi indices)
 
 /// Dump the data of a VarModel struct
 void VarModel_dump(VarModel* varm);
+void VarModel_dump2(VarModel* varm, int iteration, FILE ** filePointer); //masud: for debugging purpose
 
 //Sari_Err VarModel_ErrRpt(Sari* sari, 
 

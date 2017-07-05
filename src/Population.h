@@ -35,8 +35,8 @@ for more details.   */
 #define POP_REP_ACF 5
 
 // Credible limits probability range
-#define POP_CL_1  0.95
-#define POP_CL_2  0.50
+#define POP_CL_1  0.95	
+#define POP_CL_2  0.50 
 
 //SQR and CUB
 #define POP_SQR(x) ((x)*(x))
@@ -49,26 +49,26 @@ struct Population {
 	int d1;  ///> size of 1st dimension
 	int d2;  ///> size of 2nd dimension, =1 if vector chain
 
-	double * h[N_WORKERS]; ///> head of vector/matrix chains, each with Dim d1*d2*M
-	int p[N_WORKERS]; ///> chain pointer, how many elements in h has been produced
+	double * h[N_WORKERS]; //> head of vector/matrix chains, each with Dim d1*d2*M
+	int p[N_WORKERS]; //> chain pointer, how many elements in h has been produced
 
-    /// report pointer, corresponds to the stats below in each chain
+    // report pointer, corresponds to the stats below in each chain
 	int _ps[N_WORKERS]; 
 
     /// statistics access lock, reading following stats must acquire the shared lock first
 	SRWLOCK statLoc;
 
 	// statistics
-	double* mean[N_WORKERS]; ///> chain means, dim = d1*d2
-	double* tmean; ///> total means (of all chains)
-	double* sdev[N_WORKERS];  ///> chain std deviation, dim = d1*d2
-	double* tsdev; ///> total std deviation (of all chains)
+	double* mean[N_WORKERS]; //> chain means, dim = d1*d2
+	double* tmean; //> total means (of all chains)
+	double* sdev[N_WORKERS];  //> chain std deviation, dim = d1*d2
+	double* tsdev; //> total std deviation (of all chains)
 
     /// autocovariances for vector time series, only available 
 	/// for 1d data (d2==1)
 	//double* acor[N_WORKERS][POP_MAX_ACF]; 
 
-    /// order statistics - ranks in a single chain 
+    // order statistics - ranks in a single chain 
     /** _os[iw][id  + im*d1*d2] is the index (im in h[]) of the im-th smallest 
 	 value in h[] for the id-th element in the iw-th chain */
 	int *_os[N_WORKERS];  
@@ -134,3 +134,6 @@ void Pop_writeout(Population* pop,
 				  char* filename, char* os_outfilename=NULL,
 				  int interval=0, int t=0);
 
+void Pop_writeout2(Population* pop,
+	char* filename, char* os_outfilename,
+	int chain_head, int timestep, int iter);

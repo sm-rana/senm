@@ -1,21 +1,28 @@
-/*
-*.user
-*.pdb
-*.idb
-*.log
-*.tlog
-*.obj
+# Ignore all configuration files:
+*.ini
 
-
-# white list
-!*.sln
-!*.vcxproj
-!*.vcxproj.filters
-!*.props
-
-!.gitignore
-!Doxyfile
+# Ignore all text files except for README.txt:
+*.txt
+*.docx
 !README.txt
 
-!src/
-!tests/
+# Ignore all CSV files which are mainly used for debugging or inputs:
+*.csv
+
+# Input and output folders:
+INPUT_FILES/
+OUTPUT/
+Rana--Includes/
+debug_out_cluster/
+bin/ 
+.vs/
+x64/
+
+#Visual C Database file, project files:
+*.db
+*.vcxproj
+*.filters
+*.user
+*.suo
+*.sdf
+*.sln

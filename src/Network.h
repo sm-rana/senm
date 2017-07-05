@@ -13,7 +13,7 @@ for more details.   */
 
 
 #pragma once
-
+#include <cstring>
 #include <map>
 #include <list>
 #include "SenmCoreIncs.h"

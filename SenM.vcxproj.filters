@@ -101,5 +101,11 @@
     <ClInclude Include="src\SFMT_1.4\SFMT-sse2.h">
       <Filter>SFMT_1.4</Filter>
     </ClInclude>
+    <ClInclude Include="src\levmar.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\iniParser_3.1\iniparser.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

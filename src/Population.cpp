@@ -32,19 +32,19 @@ Pop_Err Pop_new(int M,
 	prec->d2 = d2;
 
 
-	int iw = 0;
+	int iw = 0;	// masud: treat iw as 0
 	for (; iw<N_WORKERS; ++iw) {
-		if (!shadow) prec->h[iw] = (double*) calloc(M*d1*d2, sizeof(double));
-		prec->mean[iw] = (double*) calloc(d1*d2, sizeof(double));
-		prec->sdev[iw] = (double*) calloc(d1*d2, sizeof(double));
-		if ((!shadow && !prec->h[iw]) || !prec->mean[iw] || !prec->sdev[iw])
+		if (!shadow) prec->h[iw] = (double*) calloc(M*d1*d2, sizeof(double)); //masud: h[0][1000*7]
+		prec->mean[iw] = (double*) calloc(d1*d2, sizeof(double)); //sm. basically mean[0][7]
+		prec->sdev[iw] = (double*) calloc(d1*d2, sizeof(double)); //sm. basically sdev[0][7]
+		if ((!shadow && !prec->h[iw]) || !prec->mean[iw] || !prec->sdev[iw]) // catching exceptions..ignore
 		{err = POP_MEM_NOT_ALLOCED; goto END;}
 		prec->p[iw] = 0;
 		prec->_ps[iw] = 0;
 	}
-
-	prec->tmean = (double*) calloc(d1*d2, sizeof(double));
-	prec->tsdev = (double*) calloc(d1*d2, sizeof(double));
+	
+	prec->tmean = (double*) calloc(d1*d2, sizeof(double));	// tmean[7]
+	prec->tsdev = (double*) calloc(d1*d2, sizeof(double));  // tsdev[7]
 	if ( !prec->tmean || !prec->tsdev) 
 	{err = POP_MEM_NOT_ALLOCED; goto END;}
 
@@ -80,12 +80,13 @@ Pop_Err Pop_new(int M,
 
 	// init order stats
 	if (!shadow) for (iw=0; iw<N_WORKERS; ++iw) {
-		prec->_os[iw] = (int*)calloc(M*d1*d2, sizeof(int));
+		prec->_os[iw] = (int*)calloc(M*d1*d2, sizeof(int)); //os[][1000*7]
 		if (!prec->_os[iw]) {
 			err = POP_MEM_NOT_ALLOCED; goto END;}
 		for (int im=0; im<M; ++im)
 			for (int id=0; id<d1*d2; ++id)
 				POPOS(prec, iw, im, id) = im; //pre-loaded indices for chains
+				//masud: POPOS(prec, iw, im, id) = im EQUAL TO _os[0][0]=[0][1]=0; _os[0][2]=[0][3]=1; so on...
 	}
 
 	if (!shadow) {
@@ -419,12 +420,13 @@ void Pop_reset(Population* pop) {
 	for (int iw = 0; iw < N_WORKERS; ++iw) {
 		pop->p[iw] = 0;
 		pop->_ps[iw] = 0;
-		memset(pop->mean[iw], 0, sizeof(double)*pop->d1*pop->d2);
-		memset(pop->sdev[iw], 0, sizeof(double)*pop->d1*pop->d2);
-		memset(pop->h[iw], 0, sizeof(double)*pop->M*pop->d1*pop->d2);
+		memset(pop->mean[iw], 0, sizeof(double)*pop->d1*pop->d2); //masud: mean[7] is set to zero
+		memset(pop->sdev[iw], 0, sizeof(double)*pop->d1*pop->d2); //masud: sdev[7] is set to zero
+		memset(pop->h[iw], 0, sizeof(double)*pop->M*pop->d1*pop->d2); //masud: h[7000] is set to zero
 		for (int im = 0; im < pop->M; ++im) {
 			for (int id = 0; id < pop->d1*pop->d2; ++id) {
-				POPOS(pop, iw, im, id) = im;
+				POPOS(pop, iw, im, id) = im; //#define POPOS(pop, iw, im, id)   (pop->_os[iw][(id) + (im)*pop->d1*pop->d2])
+				//masud: basically _os[0:6] =1; _os[7:13] = 2;...
 			}
 		}
 	}
@@ -442,6 +444,7 @@ void Pop_reset(Population* pop) {
 
 }
 
+//masud: tag:outputfile
 void Pop_writeout(Population* pop, 
 				  char* filename, char* os_outfilename,
 				  int chain_head, int timestep) {
@@ -453,7 +456,7 @@ void Pop_writeout(Population* pop,
 
 	for (int im = 0; im < chain_head; ++ im) {
 		for (int id = 0; id < pop->d1 * pop->d2; ++id) {
-			fprintf(outfile, "%8.3f ", POPH(pop, 0, im, id));
+			fprintf(outfile, "%8.3f, ", POPH(pop, 0, im, id));
 		}
 		fprintf(outfile, "\n");
 	}
@@ -473,7 +476,25 @@ void Pop_writeout(Population* pop,
 		}
 		fclose(os_outfile);
 	}
+}
 
+void Pop_writeout2(Population* pop,
+	char* filename, char* os_outfilename,
+	int chain_head, int timestep, int iter) {
+
+	char out_full_filename[MAX_FILE_NAME_SIZE];
+	sprintf(out_full_filename, "%s_%d_%d",filename,iter, timestep);
+	FILE* outfile = fopen(out_full_filename, "w");
+	if (outfile == NULL) { return; }
+
+	for (int im = 0; im < chain_head; ++im) {
+		for (int id = 0; id < pop->d1 * pop->d2; ++id) {
+			fprintf(outfile, "%8.3f ", POPH(pop, 0, im, id));
+		}
+		fprintf(outfile, "\n");
+	}
+	fclose(outfile);
+	
 }
 
 

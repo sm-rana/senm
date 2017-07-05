@@ -6,6 +6,9 @@ The software is under GPLv2 license.
 Designed and implemented by Jinduan Chen, University of Cincinnati, 2013-2014
 jinduan.uc@gmail.com
 
+Modification and new implementations by S.M. Masud Rana, University of Cincinnati, 2015-2017
+sm.masudrana@gmail.com 
+
 Project organization:
 
 <<Version controlled by git>>

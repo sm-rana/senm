@@ -1,4 +1,4 @@
-USE rtx_demo_db;
+﻿USE rtx_demo_db;
 DROP TABLE IF EXISTS Msmts; 
 DROP TABLE IF EXISTS Channels; 
 # DROP TABLE IF EXISTS Distros;
@@ -22,3 +22,5 @@ CREATE TABLE Msmts (
 			PRIMARY KEY (id),
 			CONSTRAINT fk_chnl FOREIGN KEY (cid) REFERENCES Channels(id) 
 			);
+
+SELECT * FROM Channels

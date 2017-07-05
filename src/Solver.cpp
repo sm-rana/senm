@@ -89,7 +89,8 @@ Solver::EWICode Solver::createSolver(
 				continue;
 			}
 
-			switch (iChan->type) {
+			switch (iChan->type) 
+			{
 			case Channel::D: case Channel::P:
 				if (idx <=0 || idx > net->MaxJuncs) {
                     reportEWI(err = CHAN_MINDEX_ERR, Network::JUNC, idx, chid, thdN);
@@ -192,8 +193,8 @@ Solver::EWICode Solver::createSolver(
 		prec->_nXd = net->Nusers - nCd;
 
 
-		int n = prec->N + 1;
-		int m = prec->M + 1;
+		int n = prec->N + 1;	// number of nodes
+		int m = prec->M + 1;	// number of links
 
 		prec->D  = (double *) calloc(n, sizeof(double));
 		prec->H =  (double *) calloc(n, sizeof(double));
@@ -221,11 +222,12 @@ Solver::EWICode Solver::createSolver(
 		}
 
 		// Prepare stochastic demand (xd) indexing array
-		int iXd = 0;
-		for (int iJunc = 1; iJunc <= net->MaxJuncs; ++ iJunc) {
+		int iXd = 0; //masud: local index which is related to EPANET node index
+		for (int iJunc = 1; iJunc <= net->MaxJuncs; ++ iJunc) 
+		{
 			Network::Pdemand	pd = net->Node[iJunc].D;
 
-			if (pd!=NULL && pd->Base>0 && ((tabCAT[iJunc] & Channel::D) ==0 )) {
+			if (pd!=NULL && pd->Base>0 && ((tabCAT[iJunc] & Channel::D)==0)) {
 				// is a water user and no Channel D
 				prec->_tabXd[iXd] = iJunc;
 				prec->_tabIdx2Xd[iJunc] = iXd;
@@ -244,6 +246,11 @@ Solver::EWICode Solver::createSolver(
 			}
 		}
 
+		FILE* fp_nodeIndex;
+		fopen_s(&fp_nodeIndex, "Debug_NodeIndex.txt", "w");
+		fprintf(fp_nodeIndex,"iXd = %d\nindex(EPANET) =%d\n\n", iXd, net->MaxJuncs);
+		fclose(fp_nodeIndex);
+		
 
 		// get pointer to snapshot data
 		//prec->_ss = ds->_datBuf;
@@ -354,7 +361,7 @@ Solver::EWICode Solver::setLFBVCD(double* chd, int n_ch) {
 			D[nN2] -= chd[iiCh]/_net->Ucf[Network::FLOW];
 			break;
 		case Channel::B:
-			// Store data into B temporarily
+			// Store data into B temporarily	//tag: elevation addition
 			B[_net->Link[iCh->mindex].N2] = 
 				chd[iiCh]/_net->Ucf[Network::PRESSURE] + 
 				_net->Node[iCh->mindex].El;
@@ -397,31 +404,40 @@ void Solver::runlogd(double *lxd, int nxd, double* chd, int n_chd) {
 	free(xd);
 }
 
+//tag:demand variables
+//masud: sv->run(cur_xd, dim, &scada[t*n_ch], n_ch);
+
 void Solver::run(double *xd, int nXd, double* chd, int n_chd) {
-    // reset demands
+	// reset demands
 	memset(D, 0, sizeof(double)*(_net->Nnodes+1));
 
 	// set demands using given data
-	if (nXd < _nXd) { // less water demands provided
+	if (nXd < _nXd) 
+	{ // less water demands provided
 		for (int ixd = 0; ixd < nXd; ++ixd) {
 			D[_tabXd[ixd]] += (xd[ixd]/_net->Ucf[Network::DEMAND]);
 		}
         reportEWI(NOT_ENOUGH_XD, threadN);
-	} else {
-		for (int ixd = 0; ixd < this->_nXd; ++ixd) {
+	} 
+	else 
+	{
+		for (int ixd = 0; ixd < this->_nXd; ++ixd) 
+		{
 			D[_tabXd[ixd]] += (xd[ixd]/_net->Ucf[Network::DEMAND]);
+			double tempsm1 = D[_tabXd[ixd]];
 		}
-		if (nXd > _nXd) { // more xd provided
+		if (nXd > _nXd) 
+		{ // more xd provided
             reportEWI(TOO_MANY_XD, threadN);
 		}
 	}
-
+	
 	// other initialization in inithyd() in hydraul.c
-	// init link flows
+	// init link flows //M = link count
 	for (int i=1; i<M; ++i) {
 		/* Initialize status and setting */
-		K[i] = _net->Link[i].Kc;
-
+		K[i] = _net->Link[i].Kc;	 /* Link settings                */
+		double tempsm2 = K[i];
 		/* Start active control valves in ACTIVE position,
 		unless pressure setting not specified*/                     
 		if ( (_net->Link[i].Type == Network::PRV || 
@@ -455,7 +471,9 @@ void Solver::run(double *xd, int nXd, double* chd, int n_chd) {
 
     // iterative solver
     do {
-        
+		//F[n];          // Right hand side coeffs.      //masud: see line 200 for mem allocations       
+		//P[m];          // Inverse headloss derivatives //n = nNodes+1; m = nLinks+1;       
+		//Y[m];          // Flow correction factors            
         newcoeffs(); //update P, Y, A, F for each component
 
 		probNode = linsolve(_net->Njuncs, Aii, Aij, F); // sparse linear solver
@@ -491,7 +509,150 @@ void Solver::run(double *xd, int nXd, double* chd, int n_chd) {
    for (int i=1; i<=_net->Njuncs; i++) D[i] += E[i];
 }
 
-Solver::EWICode Solver::logL(double* ch_data, int n_ch, double* ll_out, bool disp_res) {
+//masud: copy of run with added printing functionality
+void Solver::run2(double *xd, int nXd, double* chd, int n_chd, int* cluster_id, int is_cluster) 
+{
+	//FILE *fpClust; //"Debug_Cluster.txt"
+	//fopen_s(&fpClust, "Debug_Cluster.txt", "w");
+	//fprintf(fpClust,"ind clust D\n\n");
+	// reset demands
+	memset(D, 0, sizeof(double)*(_net->Nnodes + 1));
+	
+	// set demands using given data
+	if (nXd < _nXd)
+	{ // less water demands provided
+		for (int ixd = 0; ixd < nXd; ++ixd) 
+		{
+			D[_tabXd[ixd]] += (xd[ixd] / _net->Ucf[Network::DEMAND]);
+		}
+		reportEWI(NOT_ENOUGH_XD, threadN);
+	}
+	else
+	{
+		//_nXd is the number of nodes where demands will be estimated which is total nodes minus
+		// nodes where demands are known and/or demands are zero.
+		for (int ixd = 0; ixd < this->_nXd; ++ixd) 
+		{
+			int node_index = _tabXd[ixd]; //masud: epanet node index
+			//printf("Debug: Solver.cpp:ixd = %d, node_index = %d\n", ixd, node_index);
+			int cluster = cluster_id[node_index-1]; // todo 3: cluster_id will crash when one opts for no cluster
+			if (cluster == -1)
+			{
+				FILE *fpError;
+				fopen_s(&fpError, "ErrorFileSM.txt", "a");
+				fprintf(fpError, "Error in Clustering: _tabXd[ixd], node index = %d, idx = %d\n", node_index, ixd);
+				printf("\nSTOP (at run2() in Solver.cpp\n");
+				fclose(fpError);
+			}
+			
+			if (is_cluster) //masud: xd[cluster] is just the multiplier hence multiply with base demand to get actual demand
+			{
+				//double delte_me_demand = (xd[cluster] * _net->ref_demand[ixd])*_net->Ucf[Network::DEMAND];
+				D[_tabXd[ixd]] += (xd[cluster] * _net->ref_demand[ixd]);
+			}
+			else
+				D[_tabXd[ixd]] += (xd[ixd] / _net->Ucf[Network::DEMAND]);
+			//D[_tabXd[ixd]] += (xd[ixd] / _net->Ucf[Network::DEMAND]);
+			//fprintf(fpClust, "%d %d %.1f\n", node_index, cluster, xd[cluster]);
+		}
+		if (nXd > _nXd)
+		{ // more xd provided
+			reportEWI(TOO_MANY_XD, threadN);
+		}
+	}
+	//fclose(fpClust);
+	// other initialization in inithyd() in hydraul.c
+	// init link flows //M = link count
+	for (int i = 1; i<M; ++i) {
+		/* Initialize status and setting */
+		K[i] = _net->Link[i].Kc;	 /* Link settings                */
+
+									 /* Start active control valves in ACTIVE position,
+									 unless pressure setting not specified*/
+		if ((_net->Link[i].Type == Network::PRV ||
+			_net->Link[i].Type == Network::PSV)
+			&& (_net->Link[i].Kc != 0)) S[i] = PARTIAL;
+
+		/* Initialize flows if necessary */
+		if (S[i] == CLOSED || S[i] == DISABLED) Q[i] = CSMALL;
+		else if (abs(Q[i]) <= CSMALL)
+		{
+			// init to 1 fps for regular pipes
+			Q[i] = _PI*pow(_net->Link[i].Diam, 2) / 4.0;
+			// initial Q
+			//fprintf(fpFlow, "%.2f, ",Q[i]);	//masud: printing Q
+		}
+	}
+	//fprintf(fpFlow, "\n");
+
+	// set channel data for Channels [L][F][B][V][C][D]
+	setLFBVCD(chd, n_chd);
+
+	/* Initialize emitter flows to 1 fps */
+	for (int i = 1; i <= _net->Njuncs; i++) {
+		if (_net->Node[i].Ke > 0.0 || _tabCAT[i] & Channel::B) {
+			// emitter or B channel
+			// TODO: investigate B channels
+			E[i] = 1.0;
+			//fprintf(fpFlow, "%.2f, ", E[i]);	//masud: printing Q
+		}
+	}
+	//fprintf(fpFlow, "\n");
+
+	//fclose(fpFlow);
+
+	// run hydraulic simulation, netsolve() in hydraul.c
+	int probNode; // link causing ill-conditionality
+	double newerr = 0;  // error between subsequent iterations
+						//int statChange;  // valve change flag
+	int iter = 0;
+
+	// iterative solver
+	do {
+		//F[n];          // Right hand side coeffs.      //masud: see line 200 for mem allocations       
+		//P[m];          // Inverse headloss derivatives //n = nNodes+1; m = nLinks+1;       
+		//Y[m];          // Flow correction factors            
+		newcoeffs(); //update P, Y, A, F for each component
+
+		probNode = linsolve(_net->Njuncs, Aii, Aij, F); // sparse linear solver
+
+		if (probNode>0) { // check for ill-conditionality
+			reportEWI(EQN_ILL_COND, Network::UNDETERMINED, probNode, threadN);
+			if (badvalve(_net->Order[probNode])) { // a valve caused it
+				reportEWI(VALVE_CAUSE_ILL_COND, threadN);
+				continue;
+			}
+			else {// trouble in lin solver 
+				reportEWI(UNABLE_TO_SOLVE, threadN);
+				break;
+			}
+		}
+
+		// update heads and flows
+		for (int i = 1; i <= _net->Njuncs; ++i)
+		{
+			H[i] = F[_net->Row[i]];
+		}
+			
+		newerr = newflows();
+
+		// update cv, prv, psv status
+		//statChange = valvestatus() && linkstatus(); 
+
+		++iter;
+		if (iter > MaxIter) {
+			reportEWI(MAX_ITER_REACHED);
+			//if (statChange) 
+			//	reportEWI(CV_PSV_PRV_PROB);
+			//break;
+		}
+	} while (newerr > Hacc);
+
+	/* Add any emitter flows to junction demands */
+	//for (int i = 1; i <= _net->Njuncs; i++) D[i] += E[i];
+}
+
+Solver::EWICode Solver::logL(double* ch_data, int n_ch, double* ll_out, bool disp_res, bool sm_debug) {
 	// compare P channel to H[], Q channel to Q[]
 	if (n_ch != _nChan) return CHAN_DATA_NOT_MATCH;
 
@@ -499,30 +660,105 @@ Solver::EWICode Solver::logL(double* ch_data, int n_ch, double* ll_out, bool dis
 	double ll = 0;
 	for (Channel* chan = _lsChan; chan != NULL; chan=chan->next, ++ich) {
 		int idx = chan->mindex;
-		if (chan->type == Channel::P) {
+		if (chan->type == Channel::P) 
+		{
 			double el = _net->Node[idx].El;
 			double h = H[idx];
-			double p_obs = ch_data[ich]/_net->Ucf[Network::PRESSURE];
+			double p_obs = ch_data[ich]/_net->Ucf[Network::PRESSURE]; //masud: dividing by 0.4333
 			double p_std = chan->stde/_net->Ucf[Network::PRESSURE];
 			ll += ( -0.5 * log(2*_PI) - log(p_std) 
 					-0.5 * SQR((h-el - p_obs)/p_std));
-			if (disp_res) 
-				printf("%d, %f, %f, ", idx, p_obs, h-el);
+			//if (disp_res)
+			//{
+				//masud: commenting printing to console
+				//printf("%d, %f, %f, ", idx, p_obs, h - el);
+			//}
 		}
-		if (chan->type == Channel::Q) {
+		if (chan->type == Channel::Q) 
+		{
 			double q = Q[idx];
-			double q_obs = ch_data[ich]/_net->Ucf[Network::FLOW];
+			double q_obs = ch_data[ich]/_net->Ucf[Network::FLOW]; //masud: divided by 448.831
 			double q_std = chan->stde/_net->Ucf[Network::FLOW];
-			ll += ( -0.5 * log(2*_PI) - log(q_std) 
-					-0.5 * SQR((q - q_obs)/q_std));
-			if (disp_res) printf("%d, %f, %f, ", idx, q_obs, q);
+			ll += ( -0.5 * log(2*_PI) - log(q_std) -0.5 * SQR((q - q_obs)/q_std));
+			//if (disp_res)
+			//{
+				//masud: commenting printing to console
+				// printf("%d, %f, %f, ", idx, q_obs, q);
+				//fprintf(fp17, "%d, %f, %f, ", idx, q_obs*448.831, q*448.831);
+			//}
 		}
 	}
+	//if (disp_res)
+	//{
+		//printf("\n");
+	//}
 
-	if (disp_res) printf("\n");
 	*ll_out = ll;
 	return OK;
 }
+
+//masud: copy of logL() but with printing 
+Solver::EWICode Solver::logL2(double* ch_data, int n_ch, double* ll_out, FILE** pfp, bool disp_res) 
+{
+	// compare P channel to H[], Q channel to Q[]
+	if (n_ch != _nChan) return CHAN_DATA_NOT_MATCH;
+
+	FILE *fp164 = *pfp; //"Debug_FlowCalculations.csv"
+
+	int ich = 0;
+	double ll = 0;
+	for (Channel* chan = _lsChan; chan != NULL; chan = chan->next, ++ich) {
+		int idx = chan->mindex;
+		if (chan->type == Channel::P) {
+			double el = _net->Node[idx].El;
+			double h = H[idx];
+			double p_obs = ch_data[ich] / _net->Ucf[Network::PRESSURE]; //masud: dividing by 0.4333
+			double p_std = chan->stde / _net->Ucf[Network::PRESSURE];
+			ll += (-0.5 * log(2 * _PI) - log(p_std)
+				- 0.5 * SQR((h - el - p_obs) / p_std));
+			if(disp_res)
+				fprintf(fp164, "%d, %f, %f, ", idx, p_obs*0.4333, (h - el)*0.4333);
+		}
+		if (chan->type == Channel::Q) {
+			double q = Q[idx];
+			double q_obs = ch_data[ich] / _net->Ucf[Network::FLOW]; //masud: divided by 448.831
+			double q_std = chan->stde / _net->Ucf[Network::FLOW];
+			
+			ll += (-0.5 * log(2 * _PI) - log(q_std) - 0.5 * SQR((q - q_obs) / q_std));
+			
+			if (disp_res)
+				fprintf(fp164, "%d, %f, %f, ", idx, q_obs*448.831, q*448.831);
+		}
+	}
+	if (disp_res)
+		fprintf(fp164, "%f\n",ll);
+
+	// 6/14/2016
+	// Masud: printing out all the flows and pressure in the network to check solver result:
+	//if (disp_res)
+	//{
+	//	FILE* fp_pq; //pressure and flow
+	//	fopen_s(&fp_pq, "Debug_PressrFlw.txt", "w");
+	//	
+	//	int ENindex = _net->MaxJuncs;
+	//	fprintf(fp_pq, "index\tiXd\tDemand\tPressure\n");
+	//	for (int i = 1; i < ENindex + 1; i++)
+	//	{
+	//		double demand = D[i] * _net->Ucf[Network::FLOW];
+	//		double pressure = (H[i] - _net->Node[i].El) *_net->Ucf[Network::PRESSURE];
+	//		fprintf(fp_pq, "%d\t%d\t%f\t%f\n", i, _tabIdx2Xd[i], demand, pressure);
+	//	}
+	//	ENindex = _net->MaxLinks;
+	//	fprintf(fp_pq, "\n\nindex\tFlow\n");
+	//	for (int i = 1; i < ENindex + 1; i++)
+	//		fprintf(fp_pq, "%d\t%f\n", i, Q[i]* _net->Ucf[Network::FLOW]);
+	//	fclose(fp_pq);
+	//}
+
+	*ll_out = ll;
+	return OK;
+}
+
 
 int  Solver::linkstatus()
 /*

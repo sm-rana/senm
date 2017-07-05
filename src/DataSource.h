@@ -54,13 +54,13 @@ struct DataSource {
 	// work needed here, for now assume network and channels always have the same unit 
 	enum UnitsType {};  
 
-	int n_prov;  ///> number of data providers 
-	int n_chan;  ///> number of data channels
-	int	dt;  ///> time interval between snapshots, in seconds
+	int n_prov;  // number of data providers 
+	int n_chan;  // number of data channels
+	int	dt;  // time interval between snapshots, in seconds
 
-	double* _datBuf;  ///> data buffer - most recent snapshot with updateBufSnapshot()
-	Provider* lsProv; ///> list of data providers, mem managed here
-	Channel* lsChan; ///> list of channels, mem managed by provider
+	double* _datBuf;  // data buffer - most recent snapshot with updateBufSnapshot()
+	Provider* lsProv; // list of data providers, mem managed here
+	Channel* lsChan; // list of channels, mem managed by provider
 
 	/// report text representation of error 
 	static void reportEWI(Err err);

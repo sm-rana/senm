@@ -79,15 +79,18 @@ DataSource::Err DataSource::New(const char * ininame, Network* net, DataSource**
 
 		if (strcmp(vendor, "postgres") == 0) {
 			sprintf(tmp, "Source%d:schema", iprov);
-			schema = iniparser_getstring(dict, tmp, "");
+			schema = iniparser_getstring(dict, tmp, ""); //schema = run1
 			strcat(src, "; A6=set search_path to ");
 			strcat(src, schema);
-			strcat(src, ",public;");
+			strcat(src, ",public;"); // src = "; A6=set search_path to run1, public"
 		}
 
-		TCHAR tdsn[MAX_DSN_LEN];
+		
+
+		TCHAR tdsn[MAX_DSN_LEN]; //sm. tdsn has src info --> "; A6=set search_path to run1, public"
 		_tcscpy(tdsn, A2T(src));
 
+		//
 		Provider* aPrv;
 		if (Provider::Err perr = Provider::New(tdsn, &aPrv, net)) {
 			Provider::reportEWI(perr);
@@ -225,28 +228,59 @@ void DataSource::dumpChannelsInfo() {
 }
 
 DataSource::Err DataSource::fillSnapshots(Tstamp t_in, int n, double* snapshots) {
-    Err err = OK;
+	Err err = OK;
 	//snapshots memory must be alloced,
 	if (snapshots == NULL) return MEM_NOT_ALLOCED;
 	int j = 0;  //j - channel no.
 	int fErr = 0;
 
+	//masud: debug: printing out input scada to check we are providing what we should be providing
+	FILE *fp164; //"Debug_ScadaInput.txt"
+	fopen_s(&fp164, "Debug_ScadaInput.txt", "w");
+	// n=168
+	fprintf(fp164, "Printing SCADA input from fillSnapshots() from DataSource.cpp:\n\n");
+	fprintf(fp164, "[#] Type\tMind\tName\tErr\tL-Lim\tU-Lim\n");
+
 	for (int i=0; i<n; ++i) { // iterate through time steps
 		j=0;
-		for (Channel* chan_it=lsChan; chan_it; chan_it=chan_it->next) { 
-				Provider::Err err = chan_it->provider->getDataAt(
-					t_in, -(n-1-i)*dt, /* time shifts backward*/
-					chan_it->key, &snapshots[i*n_chan + (j++)], NULL);
-				if (err) {
-					Provider::reportEWI(err);
-					fErr = 1;
-				}
+		for (Channel* chan_it=lsChan; chan_it; chan_it=chan_it->next) 
+		{ 
+			Provider::Err err = chan_it->provider->getDataAt(
+				t_in, -(n-1-i)*dt, /* time shifts backward*/
+				chan_it->key, &snapshots[i*n_chan + (j++)], NULL);
+			if (err) {
+				Provider::reportEWI(err);
+				fErr = 1;
+			}
 		}
+	}
+
+	int countsm =0;
+	for (Channel* chan_it = lsChan; chan_it; chan_it = chan_it->next)
+	{
+		fprintf(fp164, "[%d] ", ++countsm);
+		switch (chan_it->type)
+		{
+		case Channel::Type::L: {fprintf(fp164, " L  \t");break;};
+		case Channel::Type::V: {fprintf(fp164, " V  \t");break;};
+		case Channel::Type::B: {fprintf(fp164, " B  \t");break;};
+		case Channel::Type::A: {fprintf(fp164, " A  \t");break;};
+		case Channel::Type::P: {fprintf(fp164, " P  \t");break;};
+		case Channel::Type::C: {fprintf(fp164, " C  \t");break;};
+		case Channel::Type::F: {fprintf(fp164, " F  \t");break;};
+		case Channel::Type::Q: {fprintf(fp164, " Q  \t");break;};
+		case Channel::Type::D: {fprintf(fp164, " D  \t");break;};
+			default:
+			{fprintf(fp164, "UNKNOWN\t");break;};
+		}
+		fprintf(fp164, "%d\t%s\t%.3f\t%5.0f\t%5.0f\n", chan_it->mindex, chan_it->name, chan_it->stde, chan_it->lower_lim, chan_it->upper_lim);
 	}
 
 	if (fErr) {
         reportEWI(err = CANT_GET_DATA_THRU_CHAN);
 	} 
+	
+	fclose(fp164);
     return err;
 }
 
@@ -310,7 +344,7 @@ Provider::Provider()
 	_tcscpy(chan_tab, TEXT("channels"));  // data table
 
 }
-
+//
 Provider::Err Provider::New(TCHAR* tdsn, Provider** prov_out, Network* net) {
 	(*prov_out)  = new Provider();
 	if (*prov_out == NULL) return MEM_NOT_ALLOCED;
@@ -629,7 +663,6 @@ Provider::Err Provider::loadChannels(Network* net) {
 	_stprintf(sqltext, 
 		TEXT("SELECT id, net_id_str, msmt_t, l_lim, r_lim, stde FROM %s;"), chan_tab);
 
-
 	SQLUINTEGER id; 
 	SQLCHAR net_id[MAX_NET_ID_LEN];
 	SQLCHAR type[2];
@@ -656,7 +689,7 @@ Provider::Err Provider::loadChannels(Network* net) {
 	nChan = (unsigned)n_rows;
 
 	Channel* chan_list_head = NULL;
-
+	//
 	while ((rc = SQLFetch(hStmt)) != SQL_NO_DATA) {
 
 		Channel* aChan = new Channel();
@@ -666,10 +699,10 @@ Provider::Err Provider::loadChannels(Network* net) {
 		switch (type[0]) {
 		case 'C': aChan->type = Channel::C; break;
 		case 'L': aChan->type = Channel::L; break; //actually, tank/reservior level
-		case 'Q': aChan->type = Channel::Q ;break;
+		case 'Q': aChan->type = Channel::Q; break;
 		case 'P': aChan->type = Channel::P ;break; 
 		case 'A': aChan->type = Channel::A ;break; 
-		case 'B': aChan->type = Channel::B ;break; 
+		case 'B': aChan->type = Channel::B ;break; //sm./ what is B?
 		case 'D': aChan->type = Channel::D ;break; 
 		case 'F': aChan->type = Channel::F ;break; 
 		case 'V': aChan->type = Channel::V ;break; 
@@ -701,14 +734,13 @@ Provider::Err Provider::loadChannels(Network* net) {
 	SQLCloseCursor(hStmt);
 
 	return OK;
-
 }
 
 Provider::~Provider() {
 	//destructor
 	if (hStmt) { SQLFreeHandle(SQL_HANDLE_STMT, hStmt); }
 	if (hStmt_dat) { SQLFreeHandle(SQL_HANDLE_STMT, hStmt); }
-	if (hStmt_w) { SQLFreeHandle(SQL_HANDLE_STMT, hStmt); }
+	if (hStmt_w) { SQLFreeHandle(SQL_HANDLE_STMT, hStmt); } 
 
 	if (hDbc)
 	{
